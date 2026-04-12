@@ -1,0 +1,12 @@
+Dockerfile
+.dockerignore
+node_modules
+.next
+.git
+.gitignore
+README.md
+desktop-app
+*.tsbuildinfo
+npm-debug.log*
+.env*
+build_output.txt

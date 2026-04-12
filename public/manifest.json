@@ -1,0 +1,17 @@
+{
+  "name": "Digital ALT ERP",
+  "short_name": "Digital ALT",
+  "description": "Système de gestion commerciale Digital ALT",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ea580c",
+  "icons": [
+    {
+      "src": "/logo.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
