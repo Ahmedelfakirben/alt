@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DataTable } from "@/components/data-table/data-table"
 import { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
+import { LoadingScreen } from "@/components/ui/loading-screen"
 import { useMemo } from "react"
 import { ArrowUpRight, ArrowDownLeft, Eye } from "lucide-react"
 import Link from "next/link"
@@ -132,6 +132,7 @@ export default function ComptabilitePage() {
         },
         {
             id: "actions",
+            enableSorting: false,
             header: "Doc.",
             cell: ({ row }) => {
                 const type = row.original.reference_type
@@ -171,7 +172,7 @@ export default function ComptabilitePage() {
         },
     ]
 
-    if (loadingBalance || loadingGL) return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>
+    if (loadingBalance || loadingGL) return <LoadingScreen />
 
     return (
         <div className="space-y-6">

@@ -128,6 +128,7 @@ export interface Devis {
   montant_ttc: number
   notes: string | null
   validite_jours: number
+  inclure_tva: boolean
   created_at: string
   updated_at: string
   client?: Client
@@ -162,6 +163,7 @@ export interface BonLivraison {
   montant_ttc: number
   montant_regle?: number
   notes: string | null
+  inclure_tva: boolean
   created_at: string
   client?: Client
   depot?: Depot
@@ -194,6 +196,7 @@ export interface BonRetour {
   montant_tva: number
   montant_ttc: number
   notes: string | null
+  inclure_tva: boolean
   created_at: string
   client?: Client
   depot?: Depot
@@ -223,6 +226,7 @@ export interface BonCommande {
   montant_tva: number
   montant_ttc: number
   notes: string | null
+  inclure_tva: boolean
   created_at: string
   fournisseur?: Fournisseur
   lignes?: BonCommandeLigne[]
@@ -254,6 +258,7 @@ export interface BonAchat {
   montant_ttc: number
   montant_regle?: number
   notes: string | null
+  inclure_tva: boolean
   created_at: string
   fournisseur?: Fournisseur
   depot?: Depot
@@ -284,6 +289,7 @@ export interface BonRetourAchat {
   montant_tva: number
   montant_ttc: number
   notes: string | null
+  inclure_tva: boolean
   created_at: string
   fournisseur?: Fournisseur
   depot?: Depot

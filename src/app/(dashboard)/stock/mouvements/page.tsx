@@ -3,14 +3,14 @@
 import { useMouvementStockList } from "@/hooks/use-mouvements-stock"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
+import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ArrowDownCircle, ArrowUpCircle } from "lucide-react"
 
 export default function MouvementsStockPage() {
     const { data: mouvements, isLoading } = useMouvementStockList()
 
-    if (isLoading) return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-96 w-full" /></div>
+    if (isLoading) return <LoadingScreen />
 
     return (
         <div className="space-y-6">

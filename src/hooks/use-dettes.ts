@@ -3,19 +3,26 @@
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { BonAchat } from "@/types/database"
+import { useFiscalMode } from "@/providers/fiscal-mode-context"
 
 export function useDettes() {
     const supabase = createClient()
+    const { fiscalMode } = useFiscalMode()
 
     return useQuery({
-        queryKey: ["dettes"],
+        queryKey: ["dettes", fiscalMode],
         queryFn: async () => {
-            const { data, error } = await supabase
+            let query = supabase
                 .from("bon_achats")
                 .select("*, fournisseur:fournisseurs(raison_sociale, code)")
                 .neq("statut_paiement", "paye")
                 .eq("statut", "valide")
-                .order("date", { ascending: true })
+
+            if (fiscalMode) {
+                query = query.eq("inclure_tva", true)
+            }
+
+            const { data, error } = await query.order("date", { ascending: true })
 
             if (error) throw error
             return data as BonAchat[]

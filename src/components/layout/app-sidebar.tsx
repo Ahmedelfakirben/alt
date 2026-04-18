@@ -35,6 +35,7 @@ import {
   SidebarHeader,
   SidebarFooter,
   SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -77,8 +78,8 @@ const navigation = [
   {
     label: "Finance",
     items: [
-      { title: "Créances Clients", url: "/finance/creances", icon: Landmark },
-      { title: "Dettes Fournisseurs", url: "/finance/dettes", icon: ClipboardCheck },
+      { title: "État du Client", url: "/finance/creances", icon: Landmark },
+      { title: "État du Fournisseur", url: "/finance/dettes", icon: ClipboardCheck },
       { title: "Comptabilité", url: "/finance/comptabilite", icon: FileText },
     ],
   },
@@ -92,6 +93,7 @@ const navigation = [
 ]
 
 export function AppSidebar() {
+  const { isMobile, setOpenMobile } = useSidebar()
   const pathname = usePathname()
   const router = useRouter()
 
@@ -102,14 +104,20 @@ export function AppSidebar() {
     router.refresh()
   }
 
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+  }
+
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
-        <Link href="/dashboard" className="flex items-center gap-3">
+        <Link href="/dashboard" className="flex items-center gap-3" onClick={handleLinkClick}>
           {/* Logo added */}
-          <div className="h-16 w-16 overflow-hidden rounded-md">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.jpeg" alt="Logo" className="h-full w-full object-cover" />
+          {/* Logo Placeholder - Professional Icon */}
+          <div className="h-10 w-10 shrink-0 flex items-center justify-center rounded-lg bg-orange-600 dark:bg-orange-500 shadow-lg shadow-orange-500/20">
+            <span className="text-white font-black text-xl">A</span>
           </div>
           <h1 className="text-xl font-bold text-accent">
             Digital ALT
@@ -129,6 +137,7 @@ export function AppSidebar() {
                     <SidebarMenuButton
                       asChild
                       isActive={pathname === item.url || pathname.startsWith(item.url + "/")}
+                      onClick={handleLinkClick}
                     >
                       <Link href={item.url}>
                         <item.icon className="h-4 w-4" />
@@ -151,6 +160,7 @@ export function AppSidebar() {
             <SidebarMenuButton
               asChild
               isActive={pathname.startsWith("/settings")}
+              onClick={handleLinkClick}
             >
               <Link href="/settings">
                 <Settings className="h-4 w-4" />

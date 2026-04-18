@@ -8,6 +8,7 @@ import { useBonRetourAchatsByFournisseur } from "@/hooks/use-bon-retour-achats"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Pencil, Eye } from "lucide-react"
 import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -25,14 +26,7 @@ export default function FournisseurDetailPage() {
     const { data: baList, isLoading: isLoadingBA } = useBonAchatsByFournisseur(id)
     const { data: braList, isLoading: isLoadingBRA } = useBonRetourAchatsByFournisseur(id)
 
-    if (isLoading) {
-        return (
-            <div className="space-y-4">
-                <Skeleton className="h-8 w-48" />
-                <Skeleton className="h-64 w-full" />
-            </div>
-        )
-    }
+    if (isLoading) return <LoadingScreen />
 
     if (!fournisseur) return <p>Fournisseur introuvable</p>
 
@@ -50,7 +44,9 @@ export default function FournisseurDetailPage() {
             }
         },
         {
-            id: "actions", cell: ({ row }) => (
+            id: "actions",
+            enableSorting: false,
+            cell: ({ row }) => (
                 <Button asChild variant="ghost" size="sm"><Link href={`/bon-commandes/${row.original.id}`}><Eye className="h-4 w-4 mr-2" />Voir</Link></Button>
             )
         }
@@ -70,7 +66,9 @@ export default function FournisseurDetailPage() {
             }
         },
         {
-            id: "actions", cell: ({ row }) => (
+            id: "actions",
+            enableSorting: false,
+            cell: ({ row }) => (
                 <Button asChild variant="ghost" size="sm"><Link href={`/bon-achats/${row.original.id}`}><Eye className="h-4 w-4 mr-2" />Voir</Link></Button>
             )
         }
@@ -90,7 +88,9 @@ export default function FournisseurDetailPage() {
             }
         },
         {
-            id: "actions", cell: ({ row }) => (
+            id: "actions",
+            enableSorting: false,
+            cell: ({ row }) => (
                 <Button asChild variant="ghost" size="sm"><Link href={`/bon-retour-achats/${row.original.id}`}><Eye className="h-4 w-4 mr-2" />Voir</Link></Button>
             )
         }

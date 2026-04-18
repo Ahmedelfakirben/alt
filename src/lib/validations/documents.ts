@@ -18,6 +18,7 @@ export const devisSchema = z.object({
   client_id: z.string().min(1, "Le client est obligatoire"),
   notes: z.string().optional().nullable(),
   validite_jours: z.coerce.number().int().min(1).default(30),
+  inclure_tva: z.boolean().default(false),
   lignes: z.array(documentLigneSchema).min(1, "Au moins une ligne est requise"),
 })
 
@@ -31,6 +32,7 @@ export const bonLivraisonSchema = z.object({
   tresorerie_id: z.string().optional().nullable(),
   mode_paiement: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  inclure_tva: z.boolean().default(false),
   lignes: z.array(documentLigneSchema).min(1, "Au moins une ligne est requise"),
 })
 
@@ -45,6 +47,7 @@ export const bonRetourSchema = z.object({
   mode_paiement: z.string().optional().nullable(),
   motif: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  inclure_tva: z.boolean().default(false),
   lignes: z.array(documentLigneSchema).min(1, "Au moins une ligne est requise"),
 })
 
@@ -54,6 +57,7 @@ export const bonCommandeSchema = z.object({
   date: z.string().min(1, "La date est obligatoire"),
   fournisseur_id: z.string().min(1, "Le fournisseur est obligatoire"),
   notes: z.string().optional().nullable(),
+  inclure_tva: z.boolean().default(false),
   lignes: z.array(documentLigneSchema).min(1, "Au moins une ligne est requise"),
 })
 
@@ -67,6 +71,7 @@ export const bonAchatSchema = z.object({
   tresorerie_id: z.string().optional().nullable(),
   mode_paiement: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  inclure_tva: z.boolean().default(false),
   lignes: z.array(documentLigneSchema).min(1, "Au moins une ligne est requise"),
 })
 
@@ -80,6 +85,7 @@ export const bonRetourAchatSchema = z.object({
   mode_paiement: z.string().optional().nullable(),
   motif: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  inclure_tva: z.boolean().default(false),
   lignes: z.array(documentLigneSchema).min(1, "Au moins une ligne est requise"),
 })
 

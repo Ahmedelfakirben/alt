@@ -4,17 +4,24 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import type { Devis } from "@/types/database"
 import type { DevisFormData } from "@/lib/validations/documents"
+import { useFiscalMode } from "@/providers/fiscal-mode-context"
 
 export function useDevisList() {
   const supabase = createClient()
+  const { fiscalMode } = useFiscalMode()
 
   return useQuery({
-    queryKey: ["devis"],
+    queryKey: ["devis", fiscalMode],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("devis")
         .select("*, client:clients(*), commercial:profiles(*)")
-        .order("created_at", { ascending: false })
+      
+      if (fiscalMode) {
+        query = query.eq("inclure_tva", true)
+      }
+
+      const { data, error } = await query.order("created_at", { ascending: false })
       if (error) throw error
       return data as Devis[]
     },
@@ -41,14 +48,21 @@ export function useDevis(id: string) {
 
 export function useDevisByClient(client_id: string) {
   const supabase = createClient()
+  const { fiscalMode } = useFiscalMode()
+  
   return useQuery({
-    queryKey: ["devis", "client", client_id],
+    queryKey: ["devis", "client", client_id, fiscalMode],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("devis")
         .select("*, client:clients(*), commercial:profiles(*)")
         .eq("client_id", client_id)
-        .order("created_at", { ascending: false })
+      
+      if (fiscalMode) {
+        query = query.eq("inclure_tva", true)
+      }
+
+      const { data, error } = await query.order("created_at", { ascending: false })
       if (error) throw error
       return data as Devis[]
     },
@@ -74,12 +88,14 @@ export function useCreateDevis() {
       if (!profile) throw new Error("Profil introuvable")
 
       // Get next numero
-      const { data: numero } = await supabase.rpc("next_numero" as any, { p_type: "devis" } as any)
+      const { data: numero } = await (supabase.rpc as any)("next_numero", { p_type: "devis" })
 
       const lignes = formData.lignes
-      const montant_ht = lignes.reduce((s, l) => s + l.quantite * l.prix_unitaire, 0)
-      const montant_tva = lignes.reduce((s, l) => s + l.quantite * l.prix_unitaire * (l.tva / 100), 0)
-      const montant_ttc = montant_ht + montant_tva
+      const montant_ttc = lignes.reduce((s, l) => s + l.quantite * l.prix_unitaire, 0)
+      const montant_ht = formData.inclure_tva
+        ? lignes.reduce((s, l) => s + (l.quantite * l.prix_unitaire) / (1 + l.tva / 100), 0)
+        : montant_ttc
+      const montant_tva = montant_ttc - montant_ht
 
       // Create devis
       const { data: devis, error } = await (supabase
@@ -95,22 +111,27 @@ export function useCreateDevis() {
           montant_ttc,
           notes: formData.notes || null,
           validite_jours: formData.validite_jours,
+          inclure_tva: formData.inclure_tva,
         })
         .select()
         .single()
       if (error) throw error
 
       // Create lines
-      const lignesData = lignes.map((l, i) => ({
-        devis_id: (devis as any).id,
-        article_id: l.article_id || null,
-        designation: l.designation,
-        quantite: l.quantite,
-        prix_unitaire: l.prix_unitaire,
-        tva: l.tva,
-        montant_ht: l.quantite * l.prix_unitaire,
-        ordre: i,
-      }))
+      const lignesData = lignes.map((l, i) => {
+        const line_ttc = l.quantite * l.prix_unitaire
+        const line_ht = formData.inclure_tva ? line_ttc / (1 + l.tva / 100) : line_ttc
+        return {
+          devis_id: (devis as any).id,
+          article_id: l.article_id || null,
+          designation: l.designation,
+          quantite: l.quantite,
+          prix_unitaire: l.prix_unitaire,
+          tva: l.tva,
+          montant_ht: line_ht,
+          ordre: i,
+        }
+      })
 
       const { error: lignesError } = await (supabase
         .from("devis_lignes") as any)
@@ -132,9 +153,11 @@ export function useUpdateDevis() {
   return useMutation({
     mutationFn: async ({ id, data: formData }: { id: string; data: DevisFormData }) => {
       const lignes = formData.lignes
-      const montant_ht = lignes.reduce((s, l) => s + l.quantite * l.prix_unitaire, 0)
-      const montant_tva = lignes.reduce((s, l) => s + l.quantite * l.prix_unitaire * (l.tva / 100), 0)
-      const montant_ttc = montant_ht + montant_tva
+      const montant_ttc = lignes.reduce((s, l) => s + l.quantite * l.prix_unitaire, 0)
+      const montant_ht = formData.inclure_tva
+        ? lignes.reduce((s, l) => s + (l.quantite * l.prix_unitaire) / (1 + l.tva / 100), 0)
+        : montant_ttc
+      const montant_tva = montant_ttc - montant_ht
 
       // Update devis
       const { data: devis, error } = await (supabase
@@ -147,6 +170,7 @@ export function useUpdateDevis() {
           montant_ttc,
           notes: formData.notes || null,
           validite_jours: formData.validite_jours,
+          inclure_tva: formData.inclure_tva,
         })
         .eq("id", id)
         .select()
@@ -156,16 +180,20 @@ export function useUpdateDevis() {
       // Delete existing lines and re-insert
       await (supabase.from("devis_lignes") as any).delete().eq("devis_id", id)
 
-      const lignesData = lignes.map((l, i) => ({
-        devis_id: id,
-        article_id: l.article_id || null,
-        designation: l.designation,
-        quantite: l.quantite,
-        prix_unitaire: l.prix_unitaire,
-        tva: l.tva,
-        montant_ht: l.quantite * l.prix_unitaire,
-        ordre: i,
-      }))
+      const lignesData = lignes.map((l, i) => {
+        const line_ttc = l.quantite * l.prix_unitaire
+        const line_ht = formData.inclure_tva ? line_ttc / (1 + l.tva / 100) : line_ttc
+        return {
+          devis_id: id,
+          article_id: l.article_id || null,
+          designation: l.designation,
+          quantite: l.quantite,
+          prix_unitaire: l.prix_unitaire,
+          tva: l.tva,
+          montant_ht: line_ht,
+          ordre: i,
+        }
+      })
 
       const { error: lignesError } = await (supabase
         .from("devis_lignes") as any)
@@ -214,6 +242,52 @@ export function useUpdateDevisStatut() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["devis"] })
       queryClient.invalidateQueries({ queryKey: ["bon-livraisons"] })
+    },
+  })
+}
+
+export function useToggleDevisTVA() {
+  const supabase = createClient()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, inclure_tva }: { id: string; inclure_tva: boolean }) => {
+      // 1. Get current devis and lines
+      const { data: devis, error: devisError } = await supabase
+        .from("devis")
+        .select("*, lignes:devis_lignes(*)")
+        .eq("id", id)
+        .single()
+      if (devisError) throw devisError
+
+      const lignes = (devis as any).lignes || []
+      const montant_ttc = lignes.reduce((s: number, l: any) => s + l.quantite * l.prix_unitaire, 0)
+      const montant_ht = inclure_tva
+        ? lignes.reduce((s: number, l: any) => s + (l.quantite * l.prix_unitaire) / (1 + l.tva / 100), 0)
+        : montant_ttc
+      const montant_tva = montant_ttc - montant_ht
+
+      // 2. Update devis
+      const { error: updateError } = await (supabase
+        .from("devis") as any)
+        .update({
+          inclure_tva,
+          montant_ht,
+          montant_tva,
+          montant_ttc
+        })
+        .eq("id", id)
+      if (updateError) throw updateError
+
+      // 3. Update lines montant_ht
+      for (const l of lignes) {
+        const line_ttc = l.quantite * l.prix_unitaire
+        const line_ht = inclure_tva ? line_ttc / (1 + l.tva / 100) : line_ttc
+        await (supabase.from("devis_lignes") as any).update({ montant_ht: line_ht }).eq("id", l.id)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["devis"] })
     },
   })
 }

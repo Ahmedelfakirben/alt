@@ -9,11 +9,14 @@ import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { User, Building, Save, Loader2 } from "lucide-react"
+import { User, Building, Save, Loader2, ReceiptText } from "lucide-react"
 import { toast } from "sonner"
+import { useFiscalMode } from "@/providers/fiscal-mode-context"
+import { Switch } from "@/components/ui/switch"
 
 export default function SettingsPage() {
     const supabase = createClient()
+    const { fiscalMode, toggleFiscalMode } = useFiscalMode()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [profile, setProfile] = useState({ nom: "", prenom: "", email: "", role: "" })
@@ -101,6 +104,32 @@ export default function SettingsPage() {
             </Card>
 
             <Separator />
+
+            <Card className={fiscalMode ? "border-primary" : ""}>
+                <CardHeader>
+                    <div className="flex items-center gap-2">
+                        <ReceiptText className={`h-5 w-5 ${fiscalMode ? "text-primary" : ""}`} />
+                        <CardTitle>Configuration Globale d&apos;Affichage</CardTitle>
+                    </div>
+                    <CardDescription>Basculez entre le mode d&apos;affichage global et le mode facturé (TVA).</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/20">
+                        <div className="space-y-0.5">
+                            <Label className="text-base">Mode Fiscal (Facturé uniquement)</Label>
+                            <p className="text-sm text-muted-foreground">
+                                Seuls les documents et les calculs de stock/finances incluant la TVA seront affichés.
+                            </p>
+                        </div>
+                        <Switch 
+                            checked={fiscalMode}
+                            onCheckedChange={toggleFiscalMode}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Separator />
             <AdminManagement profileEmail={profile.email} />
         </div>
     )
@@ -166,21 +195,21 @@ function AdminManagement({ profileEmail }: { profileEmail: string }) {
                 <div>
                     <div className="flex items-center gap-2">
                         <ShieldAlert className="h-5 w-5 text-orange-500" />
-                        <CardTitle className="text-orange-500">Gestión de Administradores</CardTitle>
+                        <CardTitle className="text-orange-500">Gestion des Administrateurs</CardTitle>
                     </div>
-                    <CardDescription>Crea o elimina accesos con poder total sobre el sistema</CardDescription>
+                    <CardDescription>Créez ou gérez les accès avec un pouvoir total sur le système</CardDescription>
                 </div>
                 
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                     <DialogTrigger asChild>
                         <Button variant="default" className="bg-orange-600 hover:bg-orange-700">
-                            <Plus className="mr-2 h-4 w-4" /> Nuevo Admin
+                            <Plus className="mr-2 h-4 w-4" /> Nouvel Admin
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Añadir Nuevo Administrador</DialogTitle>
-                            <DialogDescription>Genera una nueva credencial segura para un encargado maestro.</DialogDescription>
+                            <DialogTitle>Ajouter un nouvel Administrateur</DialogTitle>
+                            <DialogDescription>Générez un nouvel identifiant sécurisé pour un gestionnaire principal.</DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleCreate} className="space-y-4 pt-4">
                             <div className="grid grid-cols-2 gap-4">

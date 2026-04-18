@@ -4,7 +4,7 @@ import { useTresorerie, useMouvementsTresorerie } from "@/hooks/use-tresoreries-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
+import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Pencil, ArrowUpRight, ArrowDownLeft, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { DataTable } from "@/components/data-table/data-table"
@@ -42,7 +42,7 @@ export default function TresorerieDetailPage() {
         })
     }, [tresorerie, mouvementsRaw])
 
-    if (loadingTresorerie || loadingMouvements) return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>
+    if (loadingTresorerie || loadingMouvements) return <LoadingScreen />
     if (!tresorerie) return <p>Trésorerie introuvable</p>
 
     const columns: ColumnDef<any>[] = [

@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
 import { DocumentLines } from "./document-lines"
 import { useClients } from "@/hooks/use-clients"
 import { useQuery } from "@tanstack/react-query"
@@ -59,6 +60,7 @@ export function DevisForm({ defaultValues, onSubmit, isLoading }: DevisFormProps
       client_id: defaultValues?.client_id || "",
       notes: defaultValues?.notes || "",
       validite_jours: defaultValues?.validite_jours || 30,
+      inclure_tva: defaultValues?.inclure_tva || false,
       lignes: defaultValues?.lignes?.map((l) => ({
         article_id: l.article_id,
         designation: l.designation,
@@ -139,6 +141,20 @@ export function DevisForm({ defaultValues, onSubmit, isLoading }: DevisFormProps
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="inclure_tva"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                  <div className="space-y-0.5">
+                    <FormLabel>Inclure TVA</FormLabel>
+                  </div>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
           </CardContent>
         </Card>
 
@@ -152,6 +168,7 @@ export function DevisForm({ defaultValues, onSubmit, isLoading }: DevisFormProps
               watch={form.watch}
               setValue={form.setValue}
               articles={articles || []}
+              inclureTva={form.watch("inclure_tva")}
             />
             {form.formState.errors.lignes && (
               <p className="text-sm text-destructive mt-2">

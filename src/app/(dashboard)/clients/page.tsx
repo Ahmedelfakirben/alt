@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import Link from "next/link"
 import { toast } from "sonner"
-import { Skeleton } from "@/components/ui/skeleton"
+import { LoadingScreen } from "@/components/ui/loading-screen"
 
 export default function ClientsPage() {
   const { data: clients, isLoading } = useClients()
@@ -49,66 +49,62 @@ export default function ClientsPage() {
     { accessorKey: "ice", header: "ICE" },
     {
       id: "actions",
+      enableSorting: false,
       cell: ({ row }) => {
         const client = row.original
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link href={`/clients/${client.id}`}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  Voir
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href={`/clients/${client.id}/modifier`}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Modifier
-                </Link>
-              </DropdownMenuItem>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Supprimer
-                  </DropdownMenuItem>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Voulez-vous vraiment supprimer le client &quot;{client.raison_sociale}&quot; ?
-                      Cette action est irréversible.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleDelete(client.id)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link href={`/clients/${client.id}`}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    Voir
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href={`/clients/${client.id}/modifier`}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Modifier
+                  </Link>
+                </DropdownMenuItem>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <Trash2 className="mr-2 h-4 w-4" />
                       Supprimer
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                    </DropdownMenuItem>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Voulez-vous vraiment supprimer le client &quot;{client.raison_sociale}&quot; ?
+                        Cette action est irréversible.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDelete(client.id)}>
+                        Supprimer
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         )
       },
     },
   ]
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-96 w-full" />
-      </div>
-    )
-  }
+  if (isLoading) return <LoadingScreen />
 
   return (
     <div className="space-y-6">
@@ -122,6 +118,7 @@ export default function ClientsPage() {
         searchPlaceholder="Rechercher un client..."
         createUrl="/clients/nouveau"
         createLabel="Nouveau client"
+        getRowHref={(row) => `/clients/${row.id}`}
       />
     </div>
   )

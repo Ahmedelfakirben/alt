@@ -18,6 +18,7 @@ interface PrintDocumentButtonProps {
         lignes?: Array<{ designation: string; quantite: number; prix_unitaire: number; tva: number; montant_ht: number }> | null
         validite_jours?: number
         motif?: string | null
+        inclure_tva?: boolean
     }
 }
 
@@ -46,6 +47,7 @@ export function PrintDocumentButton({ type, document: doc }: PrintDocumentButton
                 montant_ht: doc.montant_ht,
                 montant_tva: doc.montant_tva,
                 montant_ttc: doc.montant_ttc,
+                inclure_tva: doc.inclure_tva,
                 notes: doc.notes,
                 extra: Object.keys(extra).length > 0 ? extra : undefined,
             },

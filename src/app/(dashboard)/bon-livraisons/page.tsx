@@ -1,12 +1,12 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-import { useBonLivraisonList, useDeleteBonLivraison, useUpdateBonLivraisonStatut } from "@/hooks/use-bon-livraisons"
+import { useBonLivraisonList, useDeleteBonLivraison, useUpdateBonLivraisonStatut, useToggleBonLivraisonTVA } from "@/hooks/use-bon-livraisons"
 import { DataTable } from "@/components/data-table/data-table"
 import type { BonLivraison } from "@/types/database"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MoreHorizontal, Pencil, Trash2, Eye, CheckCircle } from "lucide-react"
+import { MoreHorizontal, Pencil, Trash2, Eye, CheckCircle, FileText } from "lucide-react"
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import Link from "next/link"
 import { toast } from "sonner"
-import { Skeleton } from "@/components/ui/skeleton"
+import { LoadingScreen } from "@/components/ui/loading-screen"
 
 const statutColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     brouillon: "secondary", valide: "default", annule: "destructive",
@@ -29,12 +29,21 @@ export default function BonLivraisonsPage() {
     const { data: bls, isLoading } = useBonLivraisonList()
     const deleteBL = useDeleteBonLivraison()
     const updateStatut = useUpdateBonLivraisonStatut()
+    const toggleTVA = useToggleBonLivraisonTVA()
 
     const handleDelete = async (id: string) => {
         try { await deleteBL.mutateAsync(id); toast.success("Bon de livraison supprimé") } catch { toast.error("Erreur lors de la suppression") }
     }
     const handleValider = async (id: string) => {
         try { await updateStatut.mutateAsync({ id, statut: "valide" }); toast.success("Bon de livraison validé") } catch { toast.error("Erreur lors de la validation") }
+    }
+    const handleToggleTVA = async (id: string, currentInclureTva: boolean) => {
+        try {
+            await toggleTVA.mutateAsync({ id, inclure_tva: !currentInclureTva })
+            toast.success(`TVA ${!currentInclureTva ? "activée" : "désactivée"} con éxito`)
+        } catch (error: any) {
+            toast.error(error.message || "Erreur lors du changement de TVA")
+        }
     }
 
     const columns: ColumnDef<BonLivraison>[] = [
@@ -44,43 +53,66 @@ export default function BonLivraisonsPage() {
         { accessorKey: "depot", header: "Dépôt", cell: ({ row }) => (row.original as any).depot?.libelle || "—" },
         { accessorKey: "montant_ttc", header: "Montant TTC", cell: ({ row }) => `${Number(row.original.montant_ttc).toFixed(2)} MAD` },
         {
+            id: "type",
+            header: "Tipo",
+            cell: ({ row }) => (
+                <div className="flex justify-center">
+                    {row.original.inclure_tva ? "✅" : "➖"}
+                </div>
+            ),
+        },
+        {
             accessorKey: "statut", header: "Statut",
             cell: ({ row }) => <Badge variant={statutColors[row.original.statut] || "secondary"}>{statutLabels[row.original.statut] || row.original.statut}</Badge>,
         },
         {
             id: "actions",
+            enableSorting: false,
             cell: ({ row }) => {
                 const bl = row.original
                 return (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild><Link href={`/bon-livraisons/${bl.id}`}><Eye className="mr-2 h-4 w-4" />Voir</Link></DropdownMenuItem>
-                            <DropdownMenuItem asChild><Link href={`/bon-livraisons/${bl.id}/modifier`}><Pencil className="mr-2 h-4 w-4" />Modifier</Link></DropdownMenuItem>
-                            {bl.statut === "brouillon" && (
-                                <><DropdownMenuSeparator /><DropdownMenuItem onClick={() => handleValider(bl.id)}><CheckCircle className="mr-2 h-4 w-4 text-green-600" />Valider</DropdownMenuItem></>
-                            )}
-                            <DropdownMenuSeparator />
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild><DropdownMenuItem onSelect={(e) => e.preventDefault()}><Trash2 className="mr-2 h-4 w-4" />Supprimer</DropdownMenuItem></AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader><AlertDialogTitle>Confirmer la suppression</AlertDialogTitle><AlertDialogDescription>Voulez-vous vraiment supprimer le BL {bl.numero} ?</AlertDialogDescription></AlertDialogHeader>
-                                    <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(bl.id)}>Supprimer</AlertDialogAction></AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem asChild><Link href={`/bon-livraisons/${bl.id}`}><Eye className="mr-2 h-4 w-4" />Voir</Link></DropdownMenuItem>
+                                <DropdownMenuItem asChild><Link href={`/bon-livraisons/${bl.id}/modifier`}><Pencil className="mr-2 h-4 w-4" />Modifier</Link></DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleToggleTVA(bl.id, !!bl.inclure_tva)}>
+                                    <FileText className="mr-2 h-4 w-4" />
+                                    {bl.inclure_tva ? "Retirer TVA" : "Appliquer TVA"}
+                                </DropdownMenuItem>
+                                {bl.statut === "brouillon" && (
+                                    <><DropdownMenuSeparator /><DropdownMenuItem onClick={() => handleValider(bl.id)}><CheckCircle className="mr-2 h-4 w-4 text-green-600" />Valider</DropdownMenuItem></>
+                                )}
+                                <DropdownMenuSeparator />
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild><DropdownMenuItem onSelect={(e) => e.preventDefault()}><Trash2 className="mr-2 h-4 w-4" />Supprimer</DropdownMenuItem></AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader><AlertDialogTitle>Confirmer la suppression</AlertDialogTitle><AlertDialogDescription>Voulez-vous vraiment supprimer le BL {bl.numero} ?</AlertDialogDescription></AlertDialogHeader>
+                                        <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(bl.id)}>Supprimer</AlertDialogAction></AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 )
             },
         },
     ]
 
-    if (isLoading) return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-96 w-full" /></div>
+    if (isLoading) return <LoadingScreen />
 
     return (
         <div className="space-y-6">
             <div><h2 className="text-3xl font-bold tracking-tight">Bons de livraison</h2><p className="text-muted-foreground">Gérez vos bons de livraison</p></div>
-            <DataTable columns={columns} data={bls || []} searchPlaceholder="Rechercher un bon de livraison..." createUrl="/bon-livraisons/nouveau" createLabel="Nouveau BL" />
+            <DataTable 
+                columns={columns} 
+                data={bls || []} 
+                searchPlaceholder="Rechercher un bon de livraison..." 
+                createUrl="/bon-livraisons/nouveau" 
+                createLabel="Nouveau BL"
+                getRowHref={(row) => `/bon-livraisons/${row.id}`}
+            />
         </div>
     )
 }

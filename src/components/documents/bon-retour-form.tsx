@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
 import { DocumentLines } from "./document-lines"
 import { useClients } from "@/hooks/use-clients"
 import { useDepots } from "@/hooks/use-depots"
@@ -58,6 +59,7 @@ export function BonRetourForm({ defaultValues, onSubmit, isLoading }: BonRetourF
             mode_paiement: (defaultValues as any)?.mode_paiement || "",
             motif: defaultValues?.motif || "",
             notes: defaultValues?.notes || "",
+            inclure_tva: defaultValues?.inclure_tva || false,
             lignes: defaultValues?.lignes?.map((l) => ({
                 article_id: l.article_id,
                 designation: l.designation,
@@ -95,10 +97,18 @@ export function BonRetourForm({ defaultValues, onSubmit, isLoading }: BonRetourF
                             <FormItem>
                                 <FormLabel>Dépôt *</FormLabel>
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un dépôt" /></SelectTrigger></FormControl>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un depósito" /></SelectTrigger></FormControl>
                                     <SelectContent>{depots?.map((d) => (<SelectItem key={d.id} value={d.id}>{d.code} - {d.libelle}</SelectItem>))}</SelectContent>
                                 </Select>
                                 <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="inclure_tva" render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                <FormLabel>Inclure TVA</FormLabel>
+                                <FormControl>
+                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                </FormControl>
                             </FormItem>
                         )} />
                     </CardContent>
@@ -147,7 +157,13 @@ export function BonRetourForm({ defaultValues, onSubmit, isLoading }: BonRetourF
                 <Card>
                     <CardHeader><CardTitle>Lignes</CardTitle></CardHeader>
                     <CardContent>
-                        <DocumentLines control={form.control as any} watch={form.watch} setValue={form.setValue} articles={articles || []} />
+                        <DocumentLines
+                            control={form.control as any}
+                            watch={form.watch}
+                            setValue={form.setValue}
+                            articles={articles || []}
+                            inclureTva={form.watch("inclure_tva")}
+                        />
                         {form.formState.errors.lignes && (
                             <p className="text-sm text-destructive mt-2">{form.formState.errors.lignes.message || "Vérifiez les lignes"}</p>
                         )}

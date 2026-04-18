@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
 import { DocumentLines } from "./document-lines"
 import { useClients } from "@/hooks/use-clients"
 import { useDepots } from "@/hooks/use-depots"
@@ -57,6 +58,7 @@ export function BonLivraisonForm({ defaultValues, onSubmit, isLoading }: BonLivr
             tresorerie_id: (defaultValues as any)?.tresorerie_id || "",
             mode_paiement: (defaultValues as any)?.mode_paiement || "",
             notes: defaultValues?.notes || "",
+            inclure_tva: defaultValues?.inclure_tva || false,
             lignes: defaultValues?.lignes?.map((l) => ({
                 article_id: l.article_id,
                 designation: l.designation,
@@ -100,6 +102,16 @@ export function BonLivraisonForm({ defaultValues, onSubmit, isLoading }: BonLivr
                                 <FormMessage />
                             </FormItem>
                         )} />
+                        <FormField control={form.control} name="inclure_tva" render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                <div className="space-y-0.5">
+                                    <FormLabel>Inclure TVA</FormLabel>
+                                </div>
+                                <FormControl>
+                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                </FormControl>
+                            </FormItem>
+                        )} />
                     </CardContent>
                 </Card>
 
@@ -137,7 +149,13 @@ export function BonLivraisonForm({ defaultValues, onSubmit, isLoading }: BonLivr
                 <Card>
                     <CardHeader><CardTitle>Lignes</CardTitle></CardHeader>
                     <CardContent>
-                        <DocumentLines control={form.control} watch={form.watch} setValue={form.setValue} articles={articles || []} />
+                        <DocumentLines
+                            control={form.control}
+                            watch={form.watch}
+                            setValue={form.setValue}
+                            articles={articles || []}
+                            inclureTva={form.watch("inclure_tva")}
+                        />
                         {form.formState.errors.lignes && (
                             <p className="text-sm text-destructive mt-2">{form.formState.errors.lignes.message || "Vérifiez les lignes"}</p>
                         )}

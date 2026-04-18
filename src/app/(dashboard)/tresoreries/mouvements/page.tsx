@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Skeleton } from "@/components/ui/skeleton"
+import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -35,7 +35,7 @@ export default function MouvementsTresoreriePage() {
     const totalEntrees = mouvements?.filter((m) => m.type === "entree").reduce((s, m) => s + Number(m.montant), 0) || 0
     const totalSorties = mouvements?.filter((m) => m.type === "sortie").reduce((s, m) => s + Number(m.montant), 0) || 0
 
-    if (isLoading) return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-96 w-full" /></div>
+    if (isLoading) return <LoadingScreen />
 
     return (
         <div className="space-y-6">

@@ -27,6 +27,7 @@ type DocumentData = {
     montant_ht: number
     montant_tva: number
     montant_ttc: number
+    inclure_tva?: boolean
     notes?: string | null
     extra?: Record<string, string>
 }
@@ -86,15 +87,15 @@ export function generateDocumentPDF(doc: DocumentData, company: CompanyInfo = de
     <p>Code: ${doc.tiers.code}${doc.tiers.adresse ? `<br>${doc.tiers.adresse}` : ''}${doc.tiers.telephone ? `<br>Tél: ${doc.tiers.telephone}` : ''}${doc.tiers.ice ? `<br>ICE: ${doc.tiers.ice}` : ''}</p>
   </div>
   <table>
-    <thead><tr><th>Désignation</th><th class="text-right">Qté</th><th class="text-right">P.U.</th><th class="text-right">TVA</th><th class="text-right">Montant HT</th></tr></thead>
+    <thead><tr><th>Désignation</th><th class="text-right">Qté</th><th class="text-right">P.U.</th>${doc.inclure_tva ? '<th class="text-right">TVA</th>' : ''}<th class="text-right">Montant HT</th></tr></thead>
     <tbody>
-      ${doc.lignes.map(l => `<tr><td>${l.designation}</td><td class="text-right">${l.quantite}</td><td class="text-right">${Number(l.prix_unitaire).toFixed(2)}</td><td class="text-right">${l.tva}%</td><td class="text-right">${Number(l.montant_ht).toFixed(2)}</td></tr>`).join('')}
+      ${doc.lignes.map(l => `<tr><td>${l.designation}</td><td class="text-right">${l.quantite}</td><td class="text-right">${Number(l.prix_unitaire).toFixed(2)}</td>${doc.inclure_tva ? `<td class="text-right">${l.tva}%</td>` : ''}<td class="text-right">${Number(l.montant_ht).toFixed(2)}</td></tr>`).join('')}
     </tbody>
   </table>
   <div class="totals"><table class="totals-table">
     <tr><td>Total HT</td><td class="text-right">${Number(doc.montant_ht).toFixed(2)} MAD</td></tr>
-    <tr><td>TVA</td><td class="text-right">${Number(doc.montant_tva).toFixed(2)} MAD</td></tr>
-    <tr><td class="total-ttc">Total TTC</td><td class="text-right total-ttc">${Number(doc.montant_ttc).toFixed(2)} MAD</td></tr>
+    ${doc.inclure_tva ? `<tr><td>TVA</td><td class="text-right">${Number(doc.montant_tva).toFixed(2)} MAD</td></tr>` : ''}
+    <tr><td class="total-ttc">Net à Payer</td><td class="text-right total-ttc">${Number(doc.montant_ttc).toFixed(2)} MAD</td></tr>
   </table></div>
   ${doc.notes ? `<div class="notes"><h4>Notes</h4><p>${doc.notes}</p></div>` : ''}
   <div class="footer"><p>${company.nom} · ${company.adresse} · ${company.telephone}</p></div>

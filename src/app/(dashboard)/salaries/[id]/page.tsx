@@ -4,7 +4,7 @@ import { useSalarie } from "@/hooks/use-salaries"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
+import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Pencil } from "lucide-react"
 import Link from "next/link"
 
@@ -13,7 +13,7 @@ export default function SalarieDetailPage() {
     const id = params.id as string
     const { data: salarie, isLoading } = useSalarie(id)
 
-    if (isLoading) return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full" /></div>
+    if (isLoading) return <LoadingScreen />
     if (!salarie) return <p>Salarié introuvable</p>
 
     return (

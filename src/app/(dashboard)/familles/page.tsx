@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import Link from "next/link"
 import { toast } from "sonner"
-import { Skeleton } from "@/components/ui/skeleton"
+import { LoadingScreen } from "@/components/ui/loading-screen"
 
 export default function FamillesPage() {
     const { data: familles, isLoading } = useFamilles()
@@ -46,66 +46,62 @@ export default function FamillesPage() {
         { accessorKey: "description", header: "Description", cell: ({ row }) => row.original.description || "—" },
         {
             id: "actions",
+            enableSorting: false,
             cell: ({ row }) => {
                 const famille = row.original
                 return (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                                <Link href={`/familles/${famille.id}`}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    Voir
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href={`/familles/${famille.id}/modifier`}>
-                                    <Pencil className="mr-2 h-4 w-4" />
-                                    Modifier
-                                </Link>
-                            </DropdownMenuItem>
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Supprimer
-                                    </DropdownMenuItem>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Voulez-vous vraiment supprimer la famille &quot;{famille.libelle}&quot; ?
-                                            Cette action est irréversible.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleDelete(famille.id)}>
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/familles/${famille.id}`}>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        Voir
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/familles/${famille.id}/modifier`}>
+                                        <Pencil className="mr-2 h-4 w-4" />
+                                        Modifier
+                                    </Link>
+                                </DropdownMenuItem>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                            <Trash2 className="mr-2 h-4 w-4" />
                                             Supprimer
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                                        </DropdownMenuItem>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Voulez-vous vraiment supprimer la famille &quot;{famille.libelle}&quot; ?
+                                                Cette action est irréversible.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDelete(famille.id)}>
+                                                Supprimer
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 )
             },
         },
     ]
 
-    if (isLoading) {
-        return (
-            <div className="space-y-4">
-                <Skeleton className="h-8 w-48" />
-                <Skeleton className="h-96 w-full" />
-            </div>
-        )
-    }
+    if (isLoading) return <LoadingScreen />
 
     return (
         <div className="space-y-6">
@@ -116,9 +112,10 @@ export default function FamillesPage() {
             <DataTable
                 columns={columns}
                 data={familles || []}
-                searchPlaceholder="Rechercher une famille..."
+                searchPlaceholder="Rechercher un famille..."
                 createUrl="/familles/nouveau"
                 createLabel="Nouvelle famille"
+                getRowHref={(row) => `/familles/${row.id}`}
             />
         </div>
     )

@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import Link from "next/link"
 import { toast } from "sonner"
-import { Skeleton } from "@/components/ui/skeleton"
+import { LoadingScreen } from "@/components/ui/loading-screen"
 
 export default function ArticlesPage() {
     const { data: articles, isLoading } = useArticles()
@@ -89,66 +89,62 @@ export default function ArticlesPage() {
         },
         {
             id: "actions",
+            enableSorting: false,
             cell: ({ row }) => {
                 const article = row.original
                 return (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                                <Link href={`/articles/${article.id}`}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    Voir
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href={`/articles/${article.id}/modifier`}>
-                                    <Pencil className="mr-2 h-4 w-4" />
-                                    Modifier
-                                </Link>
-                            </DropdownMenuItem>
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Supprimer
-                                    </DropdownMenuItem>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Voulez-vous vraiment supprimer l&apos;article &quot;{article.designation}&quot; ?
-                                            Cette action est irréversible.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleDelete(article.id)}>
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/articles/${article.id}`}>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        Voir
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/articles/${article.id}/modifier`}>
+                                        <Pencil className="mr-2 h-4 w-4" />
+                                        Modifier
+                                    </Link>
+                                </DropdownMenuItem>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                            <Trash2 className="mr-2 h-4 w-4" />
                                             Supprimer
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                                        </DropdownMenuItem>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Voulez-vous vraiment supprimer l&apos;article &quot;{article.designation}&quot; ?
+                                                Cette action est irréversible.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDelete(article.id)}>
+                                                Supprimer
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 )
             },
         },
     ]
 
-    if (isLoading) {
-        return (
-            <div className="space-y-4">
-                <Skeleton className="h-8 w-48" />
-                <Skeleton className="h-96 w-full" />
-            </div>
-        )
-    }
+    if (isLoading) return <LoadingScreen />
 
     return (
         <div className="space-y-6">
@@ -162,6 +158,7 @@ export default function ArticlesPage() {
                 searchPlaceholder="Rechercher un article..."
                 createUrl="/articles/nouveau"
                 createLabel="Nouvel article"
+                getRowHref={(row) => `/articles/${row.id}`}
             />
         </div>
     )

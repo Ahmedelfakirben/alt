@@ -22,8 +22,9 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ChevronLeft, ChevronRight, Search, Plus } from "lucide-react"
+import { ChevronLeft, ChevronRight, Search, Plus, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -34,6 +35,7 @@ interface DataTableProps<TData, TValue> {
   createLabel?: string
   globalFilter?: string // Controlled state
   onGlobalFilterChange?: (value: string) => void // Controlled updater
+  getRowHref?: (data: TData) => string
 }
 
 export function DataTable<TData, TValue>({
@@ -45,7 +47,9 @@ export function DataTable<TData, TValue>({
   createLabel = "Nouveau",
   globalFilter: externalGlobalFilter,
   onGlobalFilterChange: setExternalGlobalFilter,
+  getRowHref,
 }: DataTableProps<TData, TValue>) {
+  const router = useRouter()
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [internalGlobalFilter, setInternalGlobalFilter] = useState("")
@@ -100,23 +104,58 @@ export function DataTable<TData, TValue>({
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
+                {headerGroup.headers.map((header) => {
+                  const canSort = header.column.getCanSort()
+                  const sortDir = header.column.getIsSorted()
+                  
+                  return (
+                    <TableHead 
+                      key={header.id}
+                      className={canSort ? "cursor-pointer select-none hover:bg-muted/30 transition-colors" : ""}
+                      onClick={header.column.getToggleSortingHandler()}
+                    >
+                      {header.isPlaceholder ? null : (
+                        <div className="flex items-center gap-2">
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                          {canSort && (
+                            <div className="text-muted-foreground/50">
+                              {sortDir === "asc" ? (
+                                <ArrowUp className="h-4 w-4 text-foreground" />
+                              ) : sortDir === "desc" ? (
+                                <ArrowDown className="h-4 w-4 text-foreground" />
+                              ) : (
+                                <ArrowUpDown className="h-4 w-4" />
+                              )}
+                            </div>
+                          )}
+                        </div>
                       )}
-                  </TableHead>
-                ))}
+                    </TableHead>
+                  )
+                })}
               </TableRow>
             ))}
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow 
+                  key={row.id}
+                  className={getRowHref ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
+                  onClick={() => {
+                    if (getRowHref) {
+                      router.push(getRowHref(row.original))
+                    }
+                  }}
+                  onAuxClick={(e) => {
+                    if (e.button === 1 && getRowHref) {
+                      window.open(getRowHref(row.original), '_blank')
+                    }
+                  }}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(

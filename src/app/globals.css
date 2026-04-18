@@ -116,13 +116,47 @@
   --sidebar-ring: oklch(0.65 0.18 45);
 }
 
+/* Fiscal Mode Theme Overrides - "Midnight & Amber" Premium Aesthetic */
+html.fiscal-mode {
+  --background: oklch(0.12 0.05 260); /* Deep Midnight */
+  --foreground: oklch(0.98 0.01 260);
+  --card: oklch(0.15 0.06 260);
+  --card-foreground: oklch(0.98 0.01 260);
+  --popover: oklch(0.15 0.06 260);
+  --popover-foreground: oklch(0.98 0.01 260);
+  --primary: oklch(0.7 0.2 45);    /* Brilliant Amber */
+  --primary-foreground: oklch(0.1 0.05 260);
+  --secondary: oklch(0.2 0.08 260);
+  --secondary-foreground: oklch(0.7 0.2 45);
+  --muted: oklch(0.2 0.08 260);
+  --muted-foreground: oklch(0.6 0.05 260);
+  --accent: oklch(0.25 0.1 260);
+  --accent-foreground: oklch(0.7 0.2 45);
+  --border: oklch(0.25 0.08 260);
+  --input: oklch(0.25 0.08 260);
+  --ring: oklch(0.7 0.2 45);
+  
+  /* Sidebar: Midnight with Amber accents */
+  --sidebar: oklch(0.1 0.05 260); 
+  --sidebar-foreground: oklch(0.95 0 0);
+  --sidebar-primary: oklch(0.7 0.2 45); 
+  --sidebar-primary-foreground: oklch(0.1 0.05 260);
+  --sidebar-accent: oklch(0.18 0.1 260);
+  --sidebar-accent-foreground: oklch(0.7 0.2 45);
+  --sidebar-border: oklch(0.7 0.2 45 / 0.1);
+  --sidebar-ring: oklch(0.7 0.2 45);
+}
+
+html.fiscal-mode.dark {
+  --background: oklch(0.1 0.05 260);
+  --card: oklch(0.12 0.06 260);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
     @apply bg-background text-foreground;
   }
 

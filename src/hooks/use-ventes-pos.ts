@@ -47,7 +47,7 @@ export function useCreateVentePos() {
             const montant_tva = lignes.reduce((s, l) => s + l.quantite * l.prix_unitaire * (l.tva / 100), 0)
             const montant_ttc = montant_ht + montant_tva
 
-            const { data: numero } = await supabase.rpc("next_numero" as any, { p_type: "vente_pos" } as any)
+            const { data: numero } = await (supabase.rpc as any)("next_numero", { p_type: "vente_pos" })
 
             const { data: vente, error } = await (supabase
                 .from("ventes_pos") as any)

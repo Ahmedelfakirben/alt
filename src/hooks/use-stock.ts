@@ -3,13 +3,23 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import type { Stock } from "@/types/database"
+import { useFiscalMode } from "@/providers/fiscal-mode-context"
 
 export function useStockList() {
     const supabase = createClient()
+    const { fiscalMode } = useFiscalMode()
 
     return useQuery({
-        queryKey: ["stock"],
+        queryKey: ["stock", fiscalMode],
         queryFn: async () => {
+            if (fiscalMode) {
+                const { data, error } = await (supabase.rpc as any)("get_fiscal_stock")
+                    .select("*, article:articles(*), depot:depots(*)")
+                
+                if (error) throw error
+                return data as Stock[]
+            }
+
             const { data, error } = await supabase
                 .from("stock")
                 .select("*, article:articles(*), depot:depots(*)")
@@ -38,14 +48,14 @@ export function useAdjustStock() {
             type: "entree" | "sortie"
             notes?: string
         }) => {
-            const { error } = await supabase.rpc("update_stock", {
+            const { error } = await (supabase.rpc as any)("update_stock", {
                 p_article_id: articleId,
                 p_depot_id: depotId,
                 p_quantite: quantity,
                 p_type: type,
                 p_ref_type: "ajustement_manuel",
-                p_ref_id: articleId // Using article ID as ref for manual manual adjustment for now, or unrelated UUID
-            } as any)
+                p_ref_id: articleId
+            })
 
             if (error) throw error
         },
@@ -58,9 +68,19 @@ export function useAdjustStock() {
 
 export function useStockByDepot(depot_id: string) {
     const supabase = createClient()
+    const { fiscalMode } = useFiscalMode()
+
     return useQuery({
-        queryKey: ["stock", "depot", depot_id],
+        queryKey: ["stock", "depot", depot_id, fiscalMode],
         queryFn: async () => {
+            if (fiscalMode) {
+                const { data, error } = await (supabase.rpc as any)("get_fiscal_stock", { p_depot_id: depot_id })
+                    .select("*, article:articles(*, famille:familles_articles(*)), depot:depots(*)")
+                
+                if (error) throw error
+                return data as Stock[]
+            }
+
             const { data, error } = await supabase
                 .from("stock")
                 .select("*, article:articles(*, famille:familles_articles(*)), depot:depots(*)")

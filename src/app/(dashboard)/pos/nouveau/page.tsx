@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Skeleton } from "@/components/ui/skeleton"
+import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Minus, Plus, ShoppingCart, Trash2, Search, CreditCard, Banknote, X } from "lucide-react"
 import { toast } from "sonner"
 
@@ -97,7 +97,7 @@ export default function PosNouveauPage() {
         } catch { toast.error("Erreur lors de l'enregistrement") }
     }
 
-    if (isLoading) return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-96 w-full" /></div>
+    if (isLoading) return <LoadingScreen />
 
     return (
         <div className="flex gap-6 h-[calc(100vh-8rem)]">

@@ -1,12 +1,12 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-import { useDevisList, useDeleteDevis, useUpdateDevisStatut } from "@/hooks/use-devis"
+import { useDevisList, useDeleteDevis, useUpdateDevisStatut, useToggleDevisTVA } from "@/hooks/use-devis"
 import { DataTable } from "@/components/data-table/data-table"
 import type { Devis } from "@/types/database"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MoreHorizontal, Pencil, Trash2, Eye, CheckCircle, XCircle } from "lucide-react"
+import { MoreHorizontal, Pencil, Trash2, Eye, CheckCircle, XCircle, FileText } from "lucide-react"
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import Link from "next/link"
 import { toast } from "sonner"
-import { Skeleton } from "@/components/ui/skeleton"
+import { LoadingScreen } from "@/components/ui/loading-screen"
 
 const statutColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     brouillon: "secondary",
@@ -38,6 +38,7 @@ export default function DevisListPage() {
     const { data: devisList, isLoading } = useDevisList()
     const deleteDevis = useDeleteDevis()
     const updateStatut = useUpdateDevisStatut()
+    const toggleTVA = useToggleDevisTVA()
 
     const handleDelete = async (id: string) => {
         try {
@@ -55,6 +56,15 @@ export default function DevisListPage() {
         } catch (error: any) {
             console.error("Erreur changement statut:", error)
             toast.error(error.message || "Erreur lors du changement de statut")
+        }
+    }
+
+    const handleToggleTVA = async (id: string, currentInclureTva: boolean) => {
+        try {
+            await toggleTVA.mutateAsync({ id, inclure_tva: !currentInclureTva })
+            toast.success(`TVA ${!currentInclureTva ? "activée" : "désactivée"} con éxito`)
+        } catch (error: any) {
+            toast.error(error.message || "Erreur lors du changement de TVA")
         }
     }
 
@@ -76,6 +86,15 @@ export default function DevisListPage() {
             cell: ({ row }) => `${Number(row.original.montant_ttc).toFixed(2)} MAD`,
         },
         {
+            id: "type",
+            header: "Tipo",
+            cell: ({ row }) => (
+                <div className="flex justify-center">
+                    {row.original.inclure_tva ? "✅" : "➖"}
+                </div>
+            ),
+        },
+        {
             accessorKey: "statut",
             header: "Statut",
             cell: ({ row }) => (
@@ -86,56 +105,63 @@ export default function DevisListPage() {
         },
         {
             id: "actions",
+            enableSorting: false,
             cell: ({ row }) => {
                 const devis = row.original
                 return (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild><Link href={`/devis/${devis.id}`}><Eye className="mr-2 h-4 w-4" />Voir</Link></DropdownMenuItem>
-                            <DropdownMenuItem asChild><Link href={`/devis/${devis.id}/modifier`}><Pencil className="mr-2 h-4 w-4" />Modifier</Link></DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            {devis.statut === "brouillon" && (
-                                <DropdownMenuItem onClick={() => handleStatut(devis.id, "envoye")}>
-                                    <CheckCircle className="mr-2 h-4 w-4" />Marquer envoyé
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem asChild><Link href={`/devis/${devis.id}`}><Eye className="mr-2 h-4 w-4" />Voir</Link></DropdownMenuItem>
+                                <DropdownMenuItem asChild><Link href={`/devis/${devis.id}/modifier`}><Pencil className="mr-2 h-4 w-4" />Modifier</Link></DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleToggleTVA(devis.id, !!devis.inclure_tva)}>
+                                    <FileText className="mr-2 h-4 w-4" />
+                                    {devis.inclure_tva ? "Retirer TVA" : "Appliquer TVA"}
                                 </DropdownMenuItem>
-                            )}
-                            {devis.statut === "envoye" && (
-                                <>
-                                    <DropdownMenuItem onClick={() => handleStatut(devis.id, "accepte")}>
-                                        <CheckCircle className="mr-2 h-4 w-4 text-green-600" />Accepter
+                                <DropdownMenuSeparator />
+                                {devis.statut === "brouillon" && (
+                                    <DropdownMenuItem onClick={() => handleStatut(devis.id, "envoye")}>
+                                        <CheckCircle className="mr-2 h-4 w-4" />Marquer envoyé
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleStatut(devis.id, "refuse")}>
-                                        <XCircle className="mr-2 h-4 w-4 text-red-600" />Refuser
-                                    </DropdownMenuItem>
-                                </>
-                            )}
-                            <DropdownMenuSeparator />
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}><Trash2 className="mr-2 h-4 w-4" />Supprimer</DropdownMenuItem>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
-                                        <AlertDialogDescription>Voulez-vous vraiment supprimer le devis {devis.numero} ? Cette action est irréversible.</AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleDelete(devis.id)}>Supprimer</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                                )}
+                                {devis.statut === "envoye" && (
+                                    <>
+                                        <DropdownMenuItem onClick={() => handleStatut(devis.id, "accepte")}>
+                                            <CheckCircle className="mr-2 h-4 w-4 text-green-600" />Accepter
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleStatut(devis.id, "refuse")}>
+                                            <XCircle className="mr-2 h-4 w-4 text-red-600" />Refuser
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                                <DropdownMenuSeparator />
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}><Trash2 className="mr-2 h-4 w-4" />Supprimer</DropdownMenuItem>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+                                            <AlertDialogDescription>Voulez-vous vraiment supprimer le devis {devis.numero} ? Cette action est irréversible.</AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDelete(devis.id)}>Supprimer</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 )
             },
         },
     ]
 
-    if (isLoading) return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-96 w-full" /></div>
+    if (isLoading) return <LoadingScreen />
 
     return (
         <div className="space-y-6">
@@ -143,7 +169,14 @@ export default function DevisListPage() {
                 <h2 className="text-3xl font-bold tracking-tight">Devis</h2>
                 <p className="text-muted-foreground">Gérez vos devis clients</p>
             </div>
-            <DataTable columns={columns} data={devisList || []} searchPlaceholder="Rechercher un devis..." createUrl="/devis/nouveau" createLabel="Nouveau devis" />
+            <DataTable 
+                columns={columns} 
+                data={devisList || []} 
+                searchPlaceholder="Rechercher un devis..." 
+                createUrl="/devis/nouveau" 
+                createLabel="Nouveau devis"
+                getRowHref={(row) => `/devis/${row.id}`}
+            />
         </div>
     )
 }

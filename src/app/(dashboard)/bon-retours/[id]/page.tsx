@@ -51,9 +51,11 @@ export default function BonRetourDetailPage() {
                 <Card>
                     <CardHeader><CardTitle>Montants</CardTitle></CardHeader>
                     <CardContent className="space-y-2">
-                        <div><span className="text-sm text-muted-foreground">HT</span><p>{Number(br.montant_ht).toFixed(2)} MAD</p></div>
-                        <div><span className="text-sm text-muted-foreground">TVA</span><p>{Number(br.montant_tva).toFixed(2)} MAD</p></div>
-                        <div><span className="text-sm text-muted-foreground">TTC</span><p className="text-lg font-bold">{Number(br.montant_ttc).toFixed(2)} MAD</p></div>
+                        <div><span className="text-sm text-muted-foreground">{br.inclure_tva ? "HT" : "Montant Total"}</span><p>{Number(br.montant_ht).toFixed(2)} MAD</p></div>
+                        {br.inclure_tva && (
+                            <div><span className="text-sm text-muted-foreground">TVA</span><p>{Number(br.montant_tva).toFixed(2)} MAD</p></div>
+                        )}
+                        <div><span className="text-sm text-muted-foreground">Net à Payer</span><p className="text-lg font-bold">{Number(br.montant_ttc).toFixed(2)} MAD</p></div>
                     </CardContent>
                 </Card>
             </div>
@@ -62,16 +64,18 @@ export default function BonRetourDetailPage() {
                 <CardContent>
                     <div className="rounded-md border">
                         <Table>
-                            <TableHeader><TableRow><TableHead>Désignation</TableHead><TableHead className="w-[100px]">Qté</TableHead><TableHead className="w-[120px]">Prix unit.</TableHead><TableHead className="w-[80px]">TVA</TableHead><TableHead className="w-[120px] text-right">Montant HT</TableHead></TableRow></TableHeader>
+                             <TableHeader><TableRow><TableHead>Désignation</TableHead><TableHead className="w-[100px]">Qté</TableHead><TableHead className="w-[120px]">Prix unit.</TableHead>{br.inclure_tva && <TableHead className="w-[80px]">TVA</TableHead>}<TableHead className="w-[120px] text-right">{br.inclure_tva ? "Montant HT" : "Montant Total"}</TableHead></TableRow></TableHeader>
                             <TableBody>
                                 {br.lignes?.map((l) => (
-                                    <TableRow key={l.id}><TableCell>{l.designation}</TableCell><TableCell>{l.quantite}</TableCell><TableCell>{Number(l.prix_unitaire).toFixed(2)} MAD</TableCell><TableCell>{l.tva}%</TableCell><TableCell className="text-right font-medium">{Number(l.montant_ht).toFixed(2)} MAD</TableCell></TableRow>
+                                    <TableRow key={l.id}><TableCell>{l.designation}</TableCell><TableCell>{l.quantite}</TableCell><TableCell>{Number(l.prix_unitaire).toFixed(2)} MAD</TableCell>{br.inclure_tva && <TableCell>{l.tva}%</TableCell>}<TableCell className="text-right font-medium">{Number(l.montant_ht).toFixed(2)} MAD</TableCell></TableRow>
                                 ))}
                             </TableBody>
-                            <TableFooter>
-                                <TableRow><TableCell colSpan={4} className="text-right">Total HT</TableCell><TableCell className="text-right font-bold">{Number(br.montant_ht).toFixed(2)} MAD</TableCell></TableRow>
-                                <TableRow><TableCell colSpan={4} className="text-right">TVA</TableCell><TableCell className="text-right font-bold">{Number(br.montant_tva).toFixed(2)} MAD</TableCell></TableRow>
-                                <TableRow><TableCell colSpan={4} className="text-right text-lg">Total TTC</TableCell><TableCell className="text-right font-bold text-lg">{Number(br.montant_ttc).toFixed(2)} MAD</TableCell></TableRow>
+                             <TableFooter>
+                                 <TableRow><TableCell colSpan={br.inclure_tva ? 4 : 3} className="text-right">{br.inclure_tva ? "Total HT" : "Montant Total"}</TableCell><TableCell className="text-right font-bold">{Number(br.montant_ht).toFixed(2)} MAD</TableCell></TableRow>
+                                {br.inclure_tva && (
+                                    <TableRow><TableCell colSpan={4} className="text-right">TVA</TableCell><TableCell className="text-right font-bold">{Number(br.montant_tva).toFixed(2)} MAD</TableCell></TableRow>
+                                )}
+                                 <TableRow><TableCell colSpan={br.inclure_tva ? 4 : 3} className="text-right text-lg">Net à Payer</TableCell><TableCell className="text-right font-bold text-lg">{Number(br.montant_ttc).toFixed(2)} MAD</TableCell></TableRow>
                             </TableFooter>
                         </Table>
                     </div>

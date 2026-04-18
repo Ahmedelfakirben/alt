@@ -1,35 +1,83 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useStockList } from "@/hooks/use-stock"
 import { useDepots } from "@/hooks/use-depots"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2 } from "lucide-react"
+import { Loader2, Package, AlertTriangle, TrendingDown, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
-import { Skeleton } from "@/components/ui/skeleton"
+import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Package, AlertTriangle, TrendingDown } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export default function StockPage() {
+    const router = useRouter()
     const { data: stock, isLoading } = useStockList()
     const { data: depots } = useDepots()
     const [depotFilter, setDepotFilter] = useState<string>("all")
     const [search, setSearch] = useState("")
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' | null }>({ key: '', direction: null })
 
-    const filtered = stock?.filter((s) => {
-        if (depotFilter !== "all" && s.depot_id !== depotFilter) return false
-        if (search && !s.article?.designation.toLowerCase().includes(search.toLowerCase()) && !s.article?.code.toLowerCase().includes(search.toLowerCase())) return false
-        return true
-    }) || []
+    const filtered = useMemo(() => {
+        return stock?.filter((s) => {
+            if (depotFilter !== "all" && s.depot_id !== depotFilter) return false
+            if (search && !s.article?.designation.toLowerCase().includes(search.toLowerCase()) && !s.article?.code.toLowerCase().includes(search.toLowerCase())) return false
+            return true
+        }) || []
+    }, [stock, depotFilter, search])
 
     const totalArticles = filtered.length
     const alerteStock = filtered.filter((s) => s.article && s.quantite <= s.article.seuil_alerte).length
     const rupture = filtered.filter((s) => s.quantite <= 0).length
 
-    if (isLoading) return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-96 w-full" /></div>
+    const handleSort = (key: string) => {
+        let direction: 'asc' | 'desc' | null = 'asc'
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc'
+        } else if (sortConfig.key === key && sortConfig.direction === 'desc') {
+            direction = null
+        }
+        setSortConfig({ key, direction })
+    }
+
+    const sortedData = useMemo(() => {
+        let items = [...filtered]
+        if (sortConfig.direction !== null) {
+            items.sort((a, b) => {
+                let aValue: any = ""
+                let bValue: any = ""
+
+                switch (sortConfig.key) {
+                    case 'code': aValue = a.article?.code || ""; bValue = b.article?.code || ""; break;
+                    case 'designation': aValue = a.article?.designation || ""; bValue = b.article?.designation || ""; break;
+                    case 'famille': aValue = a.article?.famille?.libelle || ""; bValue = b.article?.famille?.libelle || ""; break;
+                    case 'depot': aValue = a.depot?.libelle || ""; bValue = b.depot?.libelle || ""; break;
+                    case 'quantite': aValue = a.quantite; bValue = b.quantite; break;
+                    case 'seuil': aValue = a.article?.seuil_alerte || 0; bValue = b.article?.seuil_alerte || 0; break;
+                }
+
+                if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1
+                if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1
+                return 0
+            })
+        }
+        return items
+    }, [filtered, sortConfig])
+
+    const handleRowClick = (id: string | undefined) => { if (id) router.push(`/articles/${id}`) }
+    const handleRowAuxClick = (e: React.MouseEvent, id: string | undefined) => { if (e.button === 1 && id) { e.preventDefault(); window.open(`/articles/${id}`, "_blank") } }
+
+    const SortIcon = ({ column }: { column: string }) => {
+        if (sortConfig.key !== column) return <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground/50" />
+        if (sortConfig.direction === 'asc') return <ArrowUp className="ml-2 h-4 w-4" />
+        if (sortConfig.direction === 'desc') return <ArrowDown className="ml-2 h-4 w-4" />
+        return <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground/50" />
+    }
+
+    if (isLoading) return <LoadingScreen />
 
     return (
         <div className="space-y-6">
@@ -58,17 +106,26 @@ export default function StockPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Code</TableHead><TableHead>Désignation</TableHead><TableHead>Famille</TableHead>
-                                    <TableHead>Dépôt</TableHead><TableHead className="text-right">Quantité</TableHead>
-                                    <TableHead className="text-right">Seuil</TableHead><TableHead>État</TableHead>
+                                    <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('code')}><div className="flex items-center">Code<SortIcon column="code" /></div></TableHead>
+                                    <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('designation')}><div className="flex items-center">Désignation<SortIcon column="designation" /></div></TableHead>
+                                    <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('famille')}><div className="flex items-center">Famille<SortIcon column="famille" /></div></TableHead>
+                                    <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('depot')}><div className="flex items-center">Dépôt<SortIcon column="depot" /></div></TableHead>
+                                    <TableHead className="cursor-pointer select-none hover:bg-muted/50 text-right" onClick={() => handleSort('quantite')}><div className="flex items-center justify-end">Quantité<SortIcon column="quantite" /></div></TableHead>
+                                    <TableHead className="cursor-pointer select-none hover:bg-muted/50 text-right" onClick={() => handleSort('seuil')}><div className="flex items-center justify-end">Seuil<SortIcon column="seuil" /></div></TableHead>
+                                    <TableHead>État</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filtered.map((s) => {
+                                {sortedData.map((s) => {
                                     const isAlert = s.article && s.quantite <= s.article.seuil_alerte
                                     const isRupture = s.quantite <= 0
                                     return (
-                                        <TableRow key={s.id} className={isRupture ? "bg-destructive/5" : isAlert ? "bg-orange-50 dark:bg-orange-950/10" : ""}>
+                                        <TableRow 
+                                            key={s.id} 
+                                            className={`cursor-pointer transition-colors ${isRupture ? "bg-destructive/5 hover:bg-destructive/10" : isAlert ? "bg-orange-50 dark:bg-orange-950/10 hover:bg-orange-100 dark:hover:bg-orange-900/20" : "hover:bg-muted/50"}`}
+                                            onClick={() => handleRowClick(s.article_id)}
+                                            onAuxClick={(e) => handleRowAuxClick(e, s.article_id)}
+                                        >
                                             <TableCell className="font-mono text-sm">{s.article?.code}</TableCell>
                                             <TableCell className="font-medium">{s.article?.designation}</TableCell>
                                             <TableCell className="text-muted-foreground">{s.article?.famille?.libelle || "—"}</TableCell>
@@ -81,7 +138,7 @@ export default function StockPage() {
                                         </TableRow>
                                     )
                                 })}
-                                {filtered.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Aucun stock trouvé</TableCell></TableRow>}
+                                {sortedData.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Aucun stock trouvé</TableCell></TableRow>}
                             </TableBody>
                         </Table>
                     </div>

@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useFournisseurs } from "@/hooks/use-fournisseurs"
-import { useBonCommandesByFournisseur } from "@/hooks/use-bon-commandes"
-import { useBonAchatsByFournisseur } from "@/hooks/use-bon-achats"
+import { useBonCommandesByFournisseur, useBonCommandeList } from "@/hooks/use-bon-commandes"
+import { useBonAchatsByFournisseur, useBonAchatList } from "@/hooks/use-bon-achats"
 import { DataTable } from "@/components/data-table/data-table"
 import { ColumnDef } from "@tanstack/react-table"
 import type { BonCommande, BonAchat } from "@/types/database"
@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Eye } from "lucide-react"
 import Link from "next/link"
-import { Skeleton } from "@/components/ui/skeleton"
+import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -26,22 +26,42 @@ const statusColors: Record<string, "default" | "secondary" | "destructive" | "ou
 
 export default function EtatFournisseurPage() {
     const { data: fournisseurs, isLoading: loadingFournisseurs } = useFournisseurs()
-    const [selectedFournisseurId, setSelectedFournisseurId] = useState<string>("")
+    const [selectedFournisseurId, setSelectedFournisseurId] = useState<string>("all")
+    const [isMounted, setIsMounted] = useState(false)
 
-    const { data: commandes, isLoading: loadingCommandes } = useBonCommandesByFournisseur(selectedFournisseurId)
-    const { data: achats, isLoading: loadingAchats } = useBonAchatsByFournisseur(selectedFournisseurId)
+    useEffect(() => {
+        setIsMounted(true)
+    }, [])
+
+    const { data: clientCommandes, isLoading: loadingClientCommandes } = useBonCommandesByFournisseur(selectedFournisseurId)
+    const { data: clientAchats, isLoading: loadingClientAchats } = useBonAchatsByFournisseur(selectedFournisseurId)
+
+    const { data: allCommandes, isLoading: loadingAllCommandes } = useBonCommandeList()
+    const { data: allAchats, isLoading: loadingAllAchats } = useBonAchatList()
+
+    const commandes = selectedFournisseurId !== "all" ? clientCommandes : allCommandes
+    const achats = selectedFournisseurId !== "all" ? clientAchats : allAchats
+    const isLoading = loadingFournisseurs || (selectedFournisseurId !== "all" ? (loadingClientCommandes || loadingClientAchats) : (loadingAllCommandes || loadingAllAchats))
 
     const commandesColumns: ColumnDef<BonCommande>[] = [
         { accessorKey: "date", header: "Date", cell: ({ row }) => new Date(row.original.date).toLocaleDateString("fr-FR") },
         { accessorKey: "numero", header: "N° BC" },
+        { 
+            accessorKey: "fournisseur.raison_sociale", 
+            header: "Fournisseur", 
+            cell: ({ row }) => row.original.fournisseur?.raison_sociale || "N/A" 
+        },
         { accessorKey: "montant_ttc", header: "Total TTC", cell: ({ row }) => <span className="font-medium">{Number(row.original.montant_ttc).toFixed(2)}</span> },
         { accessorKey: "statut", header: "Statut", cell: ({ row }) => <Badge variant={statusColors[row.original.statut] || "outline"}>{row.original.statut}</Badge> },
         {
             id: "actions",
+            enableSorting: false,
             cell: ({ row }) => (
-                <Button asChild variant="ghost" size="sm">
-                    <Link href={`/bon-commandes/${row.original.id}`}><Eye className="h-4 w-4 mr-2" />Voir</Link>
-                </Button>
+                <div onClick={(e) => e.stopPropagation()}>
+                    <Button asChild variant="ghost" size="sm">
+                        <Link href={`/bon-commandes/${row.original.id}`}><Eye className="h-4 w-4 mr-2" />Voir</Link>
+                    </Button>
+                </div>
             ),
         },
     ]
@@ -49,6 +69,11 @@ export default function EtatFournisseurPage() {
     const achatsColumns: ColumnDef<BonAchat>[] = [
         { accessorKey: "date", header: "Date", cell: ({ row }) => new Date(row.original.date).toLocaleDateString("fr-FR") },
         { accessorKey: "numero", header: "N° BA / Facture" },
+        { 
+            accessorKey: "fournisseur.raison_sociale", 
+            header: "Fournisseur", 
+            cell: ({ row }) => row.original.fournisseur?.raison_sociale || "N/A" 
+        },
         { accessorKey: "montant_ttc", header: "Total TTC", cell: ({ row }) => <span className="font-medium">{Number(row.original.montant_ttc).toFixed(2)}</span> },
         { accessorKey: "montant_regle", header: "Réglé", cell: ({ row }) => <span className="text-muted-foreground">{Number(row.original.montant_regle || 0).toFixed(2)}</span> },
         {
@@ -60,15 +85,18 @@ export default function EtatFournisseurPage() {
         { accessorKey: "statut_paiement", header: "Statut", cell: ({ row }) => <Badge variant={statusColors[row.original.statut_paiement || "impaye"] || "outline"} className="capitalize">{row.original.statut_paiement || "impaye"}</Badge> },
         {
             id: "actions",
+            enableSorting: false,
             cell: ({ row }) => (
-                <Button asChild variant="ghost" size="sm">
-                    <Link href={`/bon-achats/${row.original.id}`}><Eye className="h-4 w-4" /></Link>
-                </Button>
+                <div onClick={(e) => e.stopPropagation()}>
+                    <Button asChild variant="ghost" size="sm">
+                        <Link href={`/bon-achats/${row.original.id}`}><Eye className="h-4 w-4" /></Link>
+                    </Button>
+                </div>
             ),
         },
     ]
 
-    if (loadingFournisseurs) return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-32 w-full" /></div>
+    if (isLoading) return <LoadingScreen />
 
     const achatsPayes = achats?.filter(a => a.statut_paiement === "paye" || a.statut_paiement === "partiel" && Number(a.montant_regle) > 0) || []
     const impayes = achats?.filter(a => !a.statut_paiement || a.statut_paiement === "impaye" || (a.statut_paiement === "partiel" && Number(a.montant_ttc) > Number(a.montant_regle || 0))) || []
@@ -85,125 +113,149 @@ export default function EtatFournisseurPage() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">État du Fournisseur</h2>
-                    <p className="text-muted-foreground">Gestion complète du dossier fournisseur</p>
+                    <h2 className="text-3xl font-bold tracking-tight">Comptes Fournisseurs</h2>
+                    <p className="text-muted-foreground">
+                        {selectedFournisseurId !== "all" ? `Dossier complet de ${fournisseurActuel?.raison_sociale}` : "Aperçu global des dettes fournisseurs"}
+                    </p>
                 </div>
-                <div className="w-full md:w-[300px]">
+                <div className="w-full md:w-[300px] flex items-center gap-2">
                     <Select value={selectedFournisseurId} onValueChange={setSelectedFournisseurId}>
                         <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner un fournisseur..." />
+                            <SelectValue placeholder="Tous les fournisseurs" />
                         </SelectTrigger>
                         <SelectContent>
+                            <SelectItem value="all">Tous les fournisseurs</SelectItem>
                             {fournisseurs?.map(f => (
                                 <SelectItem key={f.id} value={f.id}>{f.code} - {f.raison_sociale}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
+                    {selectedFournisseurId !== "all" && (
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedFournisseurId("all")}>Effacer</Button>
+                    )}
                 </div>
             </div>
 
-            {selectedFournisseurId ? (
-                <>
-                    <div className="grid gap-4 md:grid-cols-3 mb-6">
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground">Informations</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{fournisseurActuel?.raison_sociale}</div>
-                                <p className="text-xs text-muted-foreground mt-1">Code: {fournisseurActuel?.code}</p>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground">Volume des Achats</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {(achats?.reduce((acc, a) => acc + Number(a.montant_ttc), 0) || 0).toFixed(2)} MAD
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-1">Total facturé</p>
-                            </CardContent>
-                        </Card>
-                        <Card className="border-destructive">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-destructive">Dettes (Impayés)</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-destructive">{totalImpaye.toFixed(2)} MAD</div>
-                                <p className="text-xs text-muted-foreground mt-1">Total restant dû</p>
-                            </CardContent>
-                        </Card>
-                    </div>
+            <div className="grid gap-4 md:grid-cols-3 mb-6">
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Informations</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">
+                            {selectedFournisseurId !== "all" ? fournisseurActuel?.raison_sociale : "État Global"}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            {selectedFournisseurId !== "all" ? `Code: ${fournisseurActuel?.code}` : `${fournisseurs?.length || 0} fournisseurs actifs`}
+                        </p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Volume d'Achats</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">
+                            {(achats?.reduce((acc, a) => acc + Number(a.montant_ttc), 0) || 0).toFixed(2)} MAD
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Total facturé {selectedFournisseurId !== "all" ? "" : "global"}</p>
+                    </CardContent>
+                </Card>
+                <Card className="border-destructive">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-destructive">Dettes (Impayés)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-destructive">{totalImpaye.toFixed(2)} MAD</div>
+                        <p className="text-xs text-muted-foreground mt-1">Total restant dû {selectedFournisseurId !== "all" ? "" : "global"}</p>
+                    </CardContent>
+                </Card>
+            </div>
 
-                    <Tabs defaultValue="impayes" className="w-full">
-                        <TabsList className="grid w-full grid-cols-4">
-                            <TabsTrigger value="impayes">Dettes</TabsTrigger>
-                            <TabsTrigger value="achats">Achats Payés</TabsTrigger>
-                            <TabsTrigger value="commandes">Commandes</TabsTrigger>
-                            <TabsTrigger value="historique">Historique</TabsTrigger>
-                        </TabsList>
-                        
-                        <TabsContent value="impayes" className="mt-6">
-                            <Card>
-                                <CardHeader><CardTitle>Factures Impayées</CardTitle></CardHeader>
-                                <CardContent>
-                                    <DataTable columns={achatsColumns} data={impayes} searchPlaceholder="Chercher..." />
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
+            <Tabs defaultValue="impayes" className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="impayes">Dettes</TabsTrigger>
+                    <TabsTrigger value="achats">Achats Payés</TabsTrigger>
+                    <TabsTrigger value="commandes">Commandes</TabsTrigger>
+                    <TabsTrigger value="historique">Historique</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="impayes" className="mt-6">
+                    <Card>
+                        <CardHeader><CardTitle>Factures Impayées</CardTitle></CardHeader>
+                        <CardContent>
+                            <DataTable 
+                                columns={achatsColumns} 
+                                data={impayes} 
+                                searchPlaceholder="Chercher..." 
+                                getRowHref={(row) => `/bon-achats/${row.id}`}
+                            />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
 
-                        <TabsContent value="achats" className="mt-6">
-                            <Card>
-                                <CardHeader><CardTitle>Factures / B.A. Payés</CardTitle></CardHeader>
-                                <CardContent>
-                                    <DataTable columns={achatsColumns} data={achatsPayes} searchPlaceholder="Chercher..." />
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
+                <TabsContent value="achats" className="mt-6">
+                    <Card>
+                        <CardHeader><CardTitle>Factures / B.A. Payés</CardTitle></CardHeader>
+                        <CardContent>
+                            <DataTable 
+                                columns={achatsColumns} 
+                                data={achatsPayes} 
+                                searchPlaceholder="Chercher..." 
+                                getRowHref={(row) => `/bon-achats/${row.id}`}
+                            />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
 
-                        <TabsContent value="commandes" className="mt-6">
-                            <Card>
-                                <CardHeader><CardTitle>Commandes au fournisseur</CardTitle></CardHeader>
-                                <CardContent>
-                                    <DataTable columns={commandesColumns} data={commandes || []} searchPlaceholder="Chercher..." />
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
+                <TabsContent value="commandes" className="mt-6">
+                    <Card>
+                        <CardHeader><CardTitle>Liste des Commandes</CardTitle></CardHeader>
+                        <CardContent>
+                            <DataTable 
+                                columns={commandesColumns} 
+                                data={commandes || []} 
+                                searchPlaceholder="Chercher..." 
+                                getRowHref={(row) => `/bon-commandes/${row.id}`}
+                            />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
 
-                        <TabsContent value="historique" className="mt-6">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Historique Récent</CardTitle>
-                                    <CardDescription>Tous les documents générés depuis la création du compte fournisseur.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
+                <TabsContent value="historique" className="mt-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Historique Récent</CardTitle>
+                            <CardDescription>Tous les documents générés.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {!isMounted ? <div className="h-32 flex items-center justify-center text-muted-foreground">Chargement de l'historique...</div> : (
+                                <>
                                     {historiqueGlobal.map((doc, idx) => (
                                         <div key={idx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border rounded-lg">
-                                            <div>
-                                                <Badge variant="outline" className="mb-2">{doc.doc_type}</Badge>
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant="outline">{doc.doc_type}</Badge>
+                                                    <p className="font-semibold text-sm">{doc.fournisseur?.raison_sociale}</p>
+                                                </div>
                                                 <p className="font-medium">{doc.num}</p>
-                                                <p className="text-sm text-muted-foreground">{doc.date_val.toLocaleDateString("fr-FR")}</p>
+                                                <p className="text-xs text-muted-foreground">{doc.date_val.toLocaleDateString("fr-FR")}</p>
                                             </div>
                                             <div className="flex flex-col items-end mt-2 sm:mt-0">
-                                                <span className="font-bold">{Number(doc.montant).toFixed(2)} MAD</span>
-                                                <Button variant="link" size="sm" asChild>
-                                                    <Link href={doc.doc_type === "Commande" ? `/bon-commandes/${doc.id}` : `/bon-achats/${doc.id}`}>Détails</Link>
+                                                <span className="font-bold text-orange-600 dark:text-orange-400">{Number(doc.montant).toFixed(2)} MAD</span>
+                                                <Button variant="link" size="sm" asChild className="p-0 h-auto text-xs">
+                                                    <Link href={doc.doc_type === "Commande" ? `/bon-commandes/${doc.id}` : `/bon-achats/${doc.id}`}>Voir détails</Link>
                                                 </Button>
                                             </div>
                                         </div>
                                     ))}
                                     {historiqueGlobal.length === 0 && <p className="text-center text-muted-foreground">Aucun historique disponible.</p>}
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-                    </Tabs>
-                </>
-            ) : (
-                <div className="text-center py-24 text-muted-foreground border-2 border-dashed rounded-lg">
-                    <p>Veuillez sélectionner un fournisseur pour afficher son état.</p>
-                </div>
-            )}
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
         </div>
     )
 }

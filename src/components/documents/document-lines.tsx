@@ -36,6 +36,7 @@ interface DocumentLinesProps {
   setValue: UseFormSetValue<any>
   articles: Article[]
   fieldName?: string
+  inclureTva?: boolean
 }
 
 export function DocumentLines({
@@ -44,6 +45,7 @@ export function DocumentLines({
   setValue,
   articles,
   fieldName = "lignes",
+  inclureTva = false,
 }: DocumentLinesProps) {
   const { fields, append, remove } = useFieldArray({
     control,
@@ -52,16 +54,15 @@ export function DocumentLines({
 
   const lignes = watch(fieldName) || []
 
-  const totalHT = lignes.reduce(
+  const totalTTC = lignes.reduce(
     (sum: number, l: any) => sum + (l.quantite || 0) * (l.prix_unitaire || 0),
     0
   )
-  const totalTVA = lignes.reduce(
-    (sum: number, l: any) =>
-      sum + (l.quantite || 0) * (l.prix_unitaire || 0) * ((l.tva || 0) / 100),
-    0
-  )
-  const totalTTC = totalHT + totalTVA
+  const totalHTCalc = inclureTva 
+    ? lignes.reduce((s: number, l: any) => s + ((l.quantite || 0) * (l.prix_unitaire || 0)) / (1 + (l.tva || 0) / 100), 0)
+    : totalTTC
+  const totalTVA = totalTTC - totalHTCalc
+  const totalHT = totalHTCalc
 
   function handleArticleSelect(index: number, articleId: string) {
     const article = articles.find((a) => a.id === articleId)
@@ -113,15 +114,16 @@ export function DocumentLines({
               <TableHead>Désignation</TableHead>
               <TableHead className="w-[100px]">Qté</TableHead>
               <TableHead className="w-[120px]">Prix unit.</TableHead>
-              <TableHead className="w-[80px]">TVA %</TableHead>
-              <TableHead className="w-[120px] text-right">Montant HT</TableHead>
+              {inclureTva && <TableHead className="w-[80px]">TVA %</TableHead>}
+              <TableHead className="w-[120px] text-right">{inclureTva ? "Montant HT" : "Montant Total"}</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {fields.map((field, index) => {
               const ligne = lignes[index] || {}
-              const montantHT = (ligne.quantite || 0) * (ligne.prix_unitaire || 0)
+              const lineTTC = (ligne.quantite || 0) * (ligne.prix_unitaire || 0)
+              const montantHTRow = inclureTva ? lineTTC / (1 + (ligne.tva || 0) / 100) : lineTTC
 
               return (
                 <TableRow key={field.id}>
@@ -196,16 +198,18 @@ export function DocumentLines({
                       onChange={(e) => handlePrixChange(index, parseFloat(e.target.value) || 0)}
                     />
                   </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      className="h-8"
-                      {...control.register(`${fieldName}.${index}.tva`, { valueAsNumber: true })}
-                    />
-                  </TableCell>
+                  {inclureTva && (
+                    <TableCell>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        className="h-8"
+                        {...control.register(`${fieldName}.${index}.tva`, { valueAsNumber: true })}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell className="text-right font-medium">
-                    {montantHT.toFixed(2)} MAD
+                    {montantHTRow.toFixed(2)} MAD
                   </TableCell>
                   <TableCell>
                     <Button
@@ -224,26 +228,28 @@ export function DocumentLines({
           </TableBody>
           <TableFooter>
             <TableRow>
-              <TableCell colSpan={5} className="text-right font-medium">
-                Total HT
+              <TableCell colSpan={inclureTva ? 5 : 4} className="text-right font-medium">
+                {inclureTva ? "Total HT" : "Montant Total"}
               </TableCell>
               <TableCell className="text-right font-bold">
                 {totalHT.toFixed(2)} MAD
               </TableCell>
               <TableCell />
             </TableRow>
+            {inclureTva && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-right font-medium">
+                  TVA
+                </TableCell>
+                <TableCell className="text-right font-bold">
+                  {totalTVA.toFixed(2)} MAD
+                </TableCell>
+                <TableCell />
+              </TableRow>
+            )}
             <TableRow>
-              <TableCell colSpan={5} className="text-right font-medium">
-                TVA
-              </TableCell>
-              <TableCell className="text-right font-bold">
-                {totalTVA.toFixed(2)} MAD
-              </TableCell>
-              <TableCell />
-            </TableRow>
-            <TableRow>
-              <TableCell colSpan={5} className="text-right font-medium text-lg">
-                Total TTC
+              <TableCell colSpan={inclureTva ? 5 : 4} className="text-right font-medium text-lg">
+                Net à Payer
               </TableCell>
               <TableCell className="text-right font-bold text-lg">
                 {totalTTC.toFixed(2)} MAD

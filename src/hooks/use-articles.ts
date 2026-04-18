@@ -70,15 +70,14 @@ export function useCreateArticle() {
 
             // 2. Si stock initial, ajouter mouvement via RPC pour mise à jour cohérente
             if (stock_initial && stock_initial > 0 && depot_id) {
-                const { error: stockError } = await supabase
-                    .rpc("update_stock", {
-                        p_article_id: createdArticle.id,
-                        p_depot_id: depot_id,
-                        p_quantite: stock_initial,
-                        p_type: "entree",
-                        p_ref_type: "stock_initial",
-                        p_ref_id: createdArticle.id
-                    } as any)
+                const { error: stockError } = await (supabase.rpc as any)("update_stock", {
+                p_article_id: (article as any).id,
+                p_depot_id: formData.depot_id,
+                p_quantite: formData.stock_initial,
+                p_type: "entree",
+                p_ref_type: "stock_initial",
+                p_ref_id: (article as any).id
+            })
 
                 if (stockError) {
                     console.error("Error creating initial stock:", stockError)
@@ -114,15 +113,14 @@ export function useUpdateArticle() {
 
             // 2. Si ajustement stock demandé
             if (stock_initial && stock_initial > 0 && depot_id) {
-                const { error: stockError } = await supabase
-                    .rpc("update_stock", {
-                        p_article_id: id,
-                        p_depot_id: depot_id,
-                        p_quantite: stock_initial,
-                        p_type: "entree",
-                        p_ref_type: "ajustement_fiche",
-                        p_ref_id: id
-                    } as any)
+                const { error: stockError } = await (supabase.rpc as any)("update_stock", {
+                p_article_id: id,
+                p_depot_id: data.depot_id,
+                p_quantite: stock_initial,
+                p_type: "entree",
+                p_ref_type: "ajustement_manuel",
+                p_ref_id: id
+            })
 
                 if (stockError) console.error("Stock update error:", stockError)
             }

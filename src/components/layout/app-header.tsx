@@ -12,6 +12,9 @@ import {
 } from "@/components/ui/breadcrumb"
 import { usePathname } from "next/navigation"
 
+import { useFiscalMode } from "@/providers/fiscal-mode-context"
+import { Badge } from "@/components/ui/badge"
+
 const routeLabels: Record<string, string> = {
   dashboard: "Tableau de bord",
   clients: "Clients",
@@ -39,31 +42,35 @@ const routeLabels: Record<string, string> = {
 export function AppHeader() {
   const pathname = usePathname()
   const segments = pathname.split("/").filter(Boolean)
+  const { fiscalMode } = useFiscalMode()
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-      <SidebarTrigger className="-ml-1" />
-      <Separator orientation="vertical" className="mr-2 h-4" />
-      <Breadcrumb>
-        <BreadcrumbList>
-          {segments.map((segment, index) => {
-            const isLast = index === segments.length - 1
-            const href = "/" + segments.slice(0, index + 1).join("/")
-            const label = routeLabels[segment] || segment
+    <header className="flex h-14 shrink-0 items-center justify-between border-b px-4">
+      <div className="flex items-center gap-2">
+        <SidebarTrigger className="-ml-1" />
+        <Separator orientation="vertical" className="mr-2 h-4" />
+        <Breadcrumb>
+          <BreadcrumbList>
+            {segments.map((segment, index) => {
+              const isLast = index === segments.length - 1
+              const href = "/" + segments.slice(0, index + 1).join("/")
+              const label = routeLabels[segment] || segment
 
-            return (
-              <BreadcrumbItem key={href}>
-                {index > 0 && <BreadcrumbSeparator />}
-                {isLast ? (
-                  <BreadcrumbPage>{label}</BreadcrumbPage>
-                ) : (
-                  <BreadcrumbLink href={href}>{label}</BreadcrumbLink>
-                )}
-              </BreadcrumbItem>
-            )
-          })}
-        </BreadcrumbList>
-      </Breadcrumb>
+              return (
+                <BreadcrumbItem key={href}>
+                  {index > 0 && <BreadcrumbSeparator />}
+                  {isLast ? (
+                    <BreadcrumbPage>{label}</BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink href={href}>{label}</BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+              )
+            })}
+          </BreadcrumbList>
+        </Breadcrumb>
+      </div>
+
     </header>
   )
 }
