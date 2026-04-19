@@ -16,11 +16,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { DocumentLines } from "./document-lines"
+import { PaymentFormManager } from "@/components/finance/payment-form-manager"
 import { useClients } from "@/hooks/use-clients"
 import { useDepots } from "@/hooks/use-depots"
 import { useTresoreries } from "@/hooks/use-tresoreries"
+import { useBonLivraisonsByClient, useBonLivraison } from "@/hooks/use-bon-livraisons"
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
+import { Search, RefreshCw } from "lucide-react"
+import { useState } from "react"
 import type { BonRetour, Article } from "@/types/database"
 
 interface BonRetourFormProps {
@@ -34,6 +38,7 @@ export function BonRetourForm({ defaultValues, onSubmit, isLoading }: BonRetourF
     const { data: depots } = useDepots()
     const { data: tresoreries } = useTresoreries()
     const supabase = createClient()
+    const [isLoadingBL, setIsLoadingBL] = useState(false)
 
     const { data: articles } = useQuery({
         queryKey: ["articles-active"],
@@ -55,8 +60,6 @@ export function BonRetourForm({ defaultValues, onSubmit, isLoading }: BonRetourF
             client_id: defaultValues?.client_id || "",
             bon_livraison_id: defaultValues?.bon_livraison_id || "",
             depot_id: defaultValues?.depot_id || "",
-            tresorerie_id: (defaultValues as any)?.tresorerie_id || "",
-            mode_paiement: (defaultValues as any)?.mode_paiement || "",
             motif: defaultValues?.motif || "",
             notes: defaultValues?.notes || "",
             inclure_tva: defaultValues?.inclure_tva || false,
@@ -67,12 +70,17 @@ export function BonRetourForm({ defaultValues, onSubmit, isLoading }: BonRetourF
                 prix_unitaire: l.prix_unitaire,
                 tva: l.tva,
                 montant_ht: l.montant_ht,
+                codes_articles: (l as any).codes_articles || [],
                 ordre: l.ordre,
             })) || [
-                    { article_id: null, designation: "", quantite: 1, prix_unitaire: 0, tva: 20, montant_ht: 0, ordre: 0 },
+                    { article_id: null, designation: "", quantite: 1, prix_unitaire: 0, tva: 20, montant_ht: 0, codes_articles: [], ordre: 0 },
                 ],
+            paiements: [],
         },
     })
+
+    const lignes = form.watch("lignes") || []
+    const totalTTC = lignes.reduce((s, l) => s + (l.quantite || 0) * (l.prix_unitaire || 0), 0)
 
     return (
         <Form {...form}>
@@ -86,13 +94,73 @@ export function BonRetourForm({ defaultValues, onSubmit, isLoading }: BonRetourF
                         <FormField control={form.control} name="client_id" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Client *</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select onValueChange={(val) => { field.onChange(val); form.setValue("bon_livraison_id", "") }} defaultValue={field.value}>
                                     <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un client" /></SelectTrigger></FormControl>
                                     <SelectContent>{clients?.map((c) => (<SelectItem key={c.id} value={c.id}>{c.code} - {c.raison_sociale}</SelectItem>))}</SelectContent>
                                 </Select>
                                 <FormMessage />
                             </FormItem>
                         )} />
+                        <FormField control={form.control} name="bon_livraison_id" render={({ field }) => {
+                            const clientId = form.watch("client_id")
+                            const { data: bls } = useBonLivraisonsByClient(clientId)
+                            
+                            const handleLoadArticles = async () => {
+                                if (!field.value) return
+                                setIsLoadingBL(true)
+                                try {
+                                    const { data: bl, error } = await supabase
+                                        .from("bon_livraisons")
+                                        .select("*, lignes:bon_livraison_lignes(*)")
+                                        .eq("id", field.value)
+                                        .single()
+                                    
+                                    if (error) throw error
+                                    if (bl && (bl as any).lignes) {
+                                        const newLignes = (bl as any).lignes.map((l: any, i: number) => ({
+                                            article_id: l.article_id,
+                                            designation: l.designation,
+                                            quantite: l.quantite,
+                                            prix_unitaire: l.prix_unitaire,
+                                            tva: l.tva,
+                                            montant_ht: l.montant_ht,
+                                            codes_articles: l.codes_articles || [],
+                                            ordre: i,
+                                        }))
+                                        form.setValue("lignes", newLignes)
+                                        form.setValue("inclure_tva", (bl as any).inclure_tva)
+                                    }
+                                } finally {
+                                    setIsLoadingBL(false)
+                                }
+                            }
+
+                            return (
+                                <FormItem>
+                                    <FormLabel>BL de référence (Optionnel)</FormLabel>
+                                    <div className="flex gap-2">
+                                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                                            <FormControl><SelectTrigger className="flex-1"><SelectValue placeholder={clientId ? "Sélectionner un BL" : "Choisir un client d'abord"} /></SelectTrigger></FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="none">Aucun</SelectItem>
+                                                {bls?.map((bl) => (<SelectItem key={bl.id} value={bl.id}>{bl.numero} ({bl.montant_ttc.toLocaleString()} DH)</SelectItem>))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Button 
+                                            type="button" 
+                                            variant="secondary" 
+                                            size="icon"
+                                            disabled={!field.value || field.value === "none" || isLoadingBL}
+                                            onClick={handleLoadArticles}
+                                            title="Charger les articles du BL"
+                                        >
+                                            {isLoadingBL ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                        </Button>
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                            )
+                        }} />
                         <FormField control={form.control} name="depot_id" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Dépôt *</FormLabel>
@@ -114,36 +182,12 @@ export function BonRetourForm({ defaultValues, onSubmit, isLoading }: BonRetourF
                     </CardContent>
                 </Card>
 
-                <Card>
-                    <CardHeader><CardTitle>Paiement</CardTitle></CardHeader>
-                    <CardContent className="grid gap-4 md:grid-cols-2">
-                        <FormField control={form.control} name="tresorerie_id" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Trésorerie</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner une trésorerie" /></SelectTrigger></FormControl>
-                                    <SelectContent>{tresoreries?.map((t) => (<SelectItem key={t.id} value={t.id}>{t.code} - {t.libelle} ({t.type})</SelectItem>))}</SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                        <FormField control={form.control} name="mode_paiement" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Mode de paiement</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un mode" /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="especes">Espèces</SelectItem>
-                                        <SelectItem value="carte">Carte</SelectItem>
-                                        <SelectItem value="cheque">Chèque</SelectItem>
-                                        <SelectItem value="virement">Virement</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                    </CardContent>
-                </Card>
+                <PaymentFormManager 
+                    control={form.control}
+                    watch={form.watch}
+                    setValue={form.setValue}
+                    totalTTC={totalTTC}
+                />
 
                 <Card>
                     <CardHeader><CardTitle>Motif du retour</CardTitle></CardHeader>

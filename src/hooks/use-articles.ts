@@ -13,7 +13,7 @@ export function useArticles() {
         queryFn: async () => {
             const { data, error } = await supabase
                 .from("articles")
-                .select("*, famille:familles_articles(*), stock(*)")
+                .select("*, famille:familles_articles(*), sous_famille:sous_familles_articles(*), stock(*)")
                 .order("designation")
             if (error) throw error
 

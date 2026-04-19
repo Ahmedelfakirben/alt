@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import type { BonLivraison } from "@/types/database"
 import type { BonLivraisonFormData } from "@/lib/validations/documents"
 import { useFiscalMode } from "@/providers/fiscal-mode-context"
+import { cleanEmptyStrings } from "@/lib/utils"
 
 export function useBonLivraisonList() {
     const supabase = createClient()
@@ -93,13 +94,11 @@ export function useCreateBonLivraison() {
                     client_id: formData.client_id,
                     devis_id: formData.devis_id || null,
                     depot_id: formData.depot_id,
-                    statut: "brouillon",
+                    statut: "valide",
                     montant_ht,
                     montant_tva,
                     montant_ttc,
                     notes: formData.notes || null,
-                    tresorerie_id: formData.tresorerie_id || null,
-                    mode_paiement: formData.mode_paiement || null,
                     inclure_tva: formData.inclure_tva,
                 })
                 .select()
@@ -117,6 +116,7 @@ export function useCreateBonLivraison() {
                     prix_unitaire: l.prix_unitaire,
                     tva: l.tva,
                     montant_ht: line_ht,
+                    codes_articles: l.codes_articles || [],
                     ordre: i,
                 }
             })
@@ -126,19 +126,27 @@ export function useCreateBonLivraison() {
                 .insert(lignesData)
             if (lignesError) throw lignesError
 
-            for (const l of lignes) {
-                if (l.article_id) {
-                    await (supabase.rpc as any)("update_stock", {
-                        p_article_id: l.article_id,
-                        p_depot_id: formData.depot_id,
-                        p_quantite: l.quantite,
-                        p_type: "sortie",
-                        p_ref_type: "bon_livraison",
-                        p_ref_id: (bl as any).id,
-                        p_inclure_tva: formData.inclure_tva
-                    })
-                }
+            // Insert initial payments
+            if (formData.paiements && formData.paiements.length > 0) {
+                const paiementsData = formData.paiements.map(p => cleanEmptyStrings({
+                    date: p.date,
+                    montant: p.montant,
+                    mode_paiement: p.mode_paiement,
+                    tresorerie_id: p.tresorerie_id,
+                    reference_type: "bon_livraison",
+                    reference_id: (bl as any).id,
+                    note: p.note,
+                    reference_paiement: p.reference_paiement,
+                    date_echeance: p.date_echeance,
+                }))
+                const { error: pError } = await (supabase.from("paiements") as any).insert(paiementsData)
+                if (pError) throw pError
             }
+
+            // Triggers handle stock if status is 'valide' on insertion (already verified in 00022)
+            // But we keep the manual RPC call if existing triggers only handle UPDATE
+            // Checked 00022 and 00013: on_bon_livraison_valide handles (OLD.statut IS NULL OR OLD.statut = 'brouillon')
+            // So immediate validation on INSERT is covered by the trigger.
 
             return bl
         },
@@ -172,8 +180,6 @@ export function useUpdateBonLivraison() {
                     montant_tva,
                     montant_ttc,
                     notes: formData.notes || null,
-                    tresorerie_id: formData.tresorerie_id || null,
-                    mode_paiement: formData.mode_paiement || null,
                     inclure_tva: formData.inclure_tva,
                 })
                 .eq("id", id)

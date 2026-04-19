@@ -55,9 +55,15 @@ export function usePaiements(referenceType: string, referenceId: string) {
             // Check if adding this payment would exceed total
             // Optional safety check, but the trigger handles status update
             const { error } = await supabase.from("paiements").insert({
-                ...data,
+                date: data.date,
+                montant: data.montant,
                 mode_paiement: data.mode_paiement as any,
-                note: data.note || null
+                tresorerie_id: data.tresorerie_id,
+                reference_type: data.reference_type,
+                reference_id: data.reference_id,
+                note: data.note || null,
+                reference_paiement: (data as any).reference_paiement || null,
+                date_echeance: (data as any).date_echeance || null,
             } as any)
             if (error) throw error
         },

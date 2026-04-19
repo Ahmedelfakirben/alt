@@ -30,6 +30,18 @@ export default function ArticleDetailPage() {
 
     if (!article) return <p>Article introuvable</p>
 
+    const getSourceLink = (type: string, id: string) => {
+        switch (type) {
+            case "bon_livraison": return `/bon-livraisons/${id}`
+            case "bon_achat": return `/bon-achats/${id}`
+            case "bon_retour": return `/bon-retours/${id}`
+            case "bon_retour_achat": return `/bon-retour-achats/${id}`
+            case "vente_pos": return `/pos/ventes/${id}`
+            case "devis": return `/devis/${id}`
+            default: return null
+        }
+    }
+
     const historyColumns: ColumnDef<MouvementStock>[] = [
         {
             accessorKey: "created_at",
@@ -53,7 +65,18 @@ export default function ArticleDetailPage() {
         {
             accessorKey: "reference_type",
             header: "Source",
-            cell: ({ row }) => <span className="capitalize">{row.original.reference_type.replace(/_/g, " ")}</span>,
+            cell: ({ row }) => {
+                const link = getSourceLink(row.original.reference_type, row.original.reference_id)
+                const label = row.original.reference_type.replace(/_/g, " ")
+                if (link) {
+                    return (
+                        <Link href={link} className="text-orange-600 hover:underline font-bold capitalize">
+                            {label}
+                        </Link>
+                    )
+                }
+                return <span className="capitalize">{label}</span>
+            },
         },
         {
             accessorKey: "depot.libelle",

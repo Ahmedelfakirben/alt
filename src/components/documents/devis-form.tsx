@@ -61,6 +61,7 @@ export function DevisForm({ defaultValues, onSubmit, isLoading }: DevisFormProps
       notes: defaultValues?.notes || "",
       validite_jours: defaultValues?.validite_jours || 30,
       inclure_tva: defaultValues?.inclure_tva || false,
+      is_regularisation: defaultValues?.is_regularisation || false,
       lignes: defaultValues?.lignes?.map((l) => ({
         article_id: l.article_id,
         designation: l.designation,
@@ -169,6 +170,7 @@ export function DevisForm({ defaultValues, onSubmit, isLoading }: DevisFormProps
               setValue={form.setValue}
               articles={articles || []}
               inclureTva={form.watch("inclure_tva")}
+              docType="devis"
             />
             {form.formState.errors.lignes && (
               <p className="text-sm text-destructive mt-2">

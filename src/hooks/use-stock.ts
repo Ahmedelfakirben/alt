@@ -14,15 +14,34 @@ export function useStockList() {
         queryFn: async () => {
             if (fiscalMode) {
                 const { data, error } = await (supabase.rpc as any)("get_fiscal_stock")
-                    .select("*, article:articles(*), depot:depots(*)")
-                
                 if (error) throw error
-                return data as Stock[]
+                
+                // Map flat RPC result to match the structured Stock type
+                return (data as any[]).map(row => ({
+                    id: row.id,
+                    article_id: row.article_id,
+                    depot_id: row.depot_id,
+                    quantite: row.quantite,
+                    article: {
+                        id: row.article_id,
+                        code: row.article_code,
+                        designation: row.article_designation,
+                        prix_achat: row.article_prix_achat,
+                        prix_vente: row.article_prix_vente,
+                        tva: row.article_tva,
+                        famille: { libelle: row.famille_libelle },
+                        sous_famille: { libelle: row.sous_famille_libelle }
+                    },
+                    depot: {
+                        id: row.depot_id,
+                        libelle: row.depot_libelle
+                    }
+                })) as Stock[]
             }
 
             const { data, error } = await supabase
                 .from("stock")
-                .select("*, article:articles(*), depot:depots(*)")
+                .select("*, article:articles(*, famille:familles_articles(*), sous_famille:sous_familles_articles(*)), depot:depots(*)")
                 .order("quantite", { ascending: true })
             if (error) throw error
             return data as Stock[]

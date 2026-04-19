@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useFournisseurs } from "@/hooks/use-fournisseurs"
 import { useBonCommandesByFournisseur, useBonCommandeList } from "@/hooks/use-bon-commandes"
 import { useBonAchatsByFournisseur, useBonAchatList } from "@/hooks/use-bon-achats"
@@ -9,12 +9,13 @@ import { ColumnDef } from "@tanstack/react-table"
 import type { BonCommande, BonAchat } from "@/types/database"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Eye } from "lucide-react"
+import { Eye, ReceiptText, Globe } from "lucide-react"
 import Link from "next/link"
 import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { useFiscalMode } from "@/providers/fiscal-mode-context"
 
 const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     paye: "default",
@@ -28,6 +29,7 @@ export default function EtatFournisseurPage() {
     const { data: fournisseurs, isLoading: loadingFournisseurs } = useFournisseurs()
     const [selectedFournisseurId, setSelectedFournisseurId] = useState<string>("all")
     const [isMounted, setIsMounted] = useState(false)
+    const { fiscalMode } = useFiscalMode()
 
     useEffect(() => {
         setIsMounted(true)
@@ -39,8 +41,19 @@ export default function EtatFournisseurPage() {
     const { data: allCommandes, isLoading: loadingAllCommandes } = useBonCommandeList()
     const { data: allAchats, isLoading: loadingAllAchats } = useBonAchatList()
 
-    const commandes = selectedFournisseurId !== "all" ? clientCommandes : allCommandes
-    const achats = selectedFournisseurId !== "all" ? clientAchats : allAchats
+    // FISCAL FILTERING
+    const filteredCommandes = useMemo(() => {
+        const raw = selectedFournisseurId !== "all" ? clientCommandes : allCommandes
+        if (!fiscalMode) return raw || []
+        return (raw || []).filter(c => c.inclure_tva === true)
+    }, [clientCommandes, allCommandes, selectedFournisseurId, fiscalMode])
+
+    const filteredAchats = useMemo(() => {
+        const raw = selectedFournisseurId !== "all" ? clientAchats : allAchats
+        if (!fiscalMode) return raw || []
+        return (raw || []).filter(a => a.inclure_tva === true)
+    }, [clientAchats, allAchats, selectedFournisseurId, fiscalMode])
+
     const isLoading = loadingFournisseurs || (selectedFournisseurId !== "all" ? (loadingClientCommandes || loadingClientAchats) : (loadingAllCommandes || loadingAllAchats))
 
     const commandesColumns: ColumnDef<BonCommande>[] = [
@@ -98,12 +111,12 @@ export default function EtatFournisseurPage() {
 
     if (isLoading) return <LoadingScreen />
 
-    const achatsPayes = achats?.filter(a => a.statut_paiement === "paye" || a.statut_paiement === "partiel" && Number(a.montant_regle) > 0) || []
-    const impayes = achats?.filter(a => !a.statut_paiement || a.statut_paiement === "impaye" || (a.statut_paiement === "partiel" && Number(a.montant_ttc) > Number(a.montant_regle || 0))) || []
+    const achatsPayes = filteredAchats?.filter(a => a.statut_paiement === "paye" || a.statut_paiement === "partiel" && Number(a.montant_regle) > 0) || []
+    const impayes = filteredAchats?.filter(a => !a.statut_paiement || a.statut_paiement === "impaye" || (a.statut_paiement === "partiel" && Number(a.montant_ttc) > Number(a.montant_regle || 0))) || []
 
     const historiqueGlobal = [
-        ...(commandes || []).map(c => ({ ...c, doc_type: "Commande", num: c.numero, montant: c.montant_ttc, date_val: new Date(c.date) })),
-        ...(achats || []).map(a => ({ ...a, doc_type: "Achat/Facture", num: a.numero, montant: a.montant_ttc, date_val: new Date(a.date) }))
+        ...(filteredCommandes || []).map(c => ({ ...c, doc_type: "Commande", num: c.numero, montant: c.montant_ttc, date_val: new Date(c.date) })),
+        ...(filteredAchats || []).map(a => ({ ...a, doc_type: "Achat/Facture", num: a.numero, montant: a.montant_ttc, date_val: new Date(a.date) }))
     ].sort((a, b) => b.date_val.getTime() - a.date_val.getTime())
 
     const totalImpaye = impayes.reduce((acc, curr) => acc + (Number(curr.montant_ttc) - Number(curr.montant_regle || 0)), 0)
@@ -112,16 +125,26 @@ export default function EtatFournisseurPage() {
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Comptes Fournisseurs</h2>
-                    <p className="text-muted-foreground">
-                        {selectedFournisseurId !== "all" ? `Dossier complet de ${fournisseurActuel?.raison_sociale}` : "Aperçu global des dettes fournisseurs"}
-                    </p>
+                <div className="flex items-center gap-3">
+                    <div className={`p-3 rounded-xl border ${fiscalMode ? "bg-amber-500/10 border-amber-500/20" : "bg-muted border-border"}`}>
+                        {fiscalMode ? <ReceiptText className="h-6 w-6 text-amber-500" /> : <Globe className="h-6 w-6 text-muted-foreground" />}
+                    </div>
+                    <div>
+                        <h2 className={`text-3xl font-bold tracking-tight ${fiscalMode ? "text-amber-500" : ""}`}>
+                            {fiscalMode ? "Dettes Facturées" : "Comptes Fournisseurs"}
+                        </h2>
+                        <p className="text-muted-foreground">
+                            {selectedFournisseurId !== "all" 
+                                ? `Dossier ${fiscalMode ? 'fiscal' : 'complet'} de ${fournisseurActuel?.raison_sociale}` 
+                                : `Aperçu ${fiscalMode ? 'des dettes facturées' : 'global des dettes fournisseurs'}`
+                            }
+                        </p>
+                    </div>
                 </div>
                 <div className="w-full md:w-[300px] flex items-center gap-2">
                     <Select value={selectedFournisseurId} onValueChange={setSelectedFournisseurId}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Tous les fournisseurs" />
+                        <SelectTrigger className={fiscalMode ? "border-amber-500/50" : ""}>
+                            <SelectValue placeholder="Tous los proveedores" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">Tous les fournisseurs</SelectItem>
@@ -137,7 +160,7 @@ export default function EtatFournisseurPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-3 mb-6">
-                <Card>
+                <Card className={fiscalMode ? "border-amber-500/20 bg-amber-500/5" : ""}>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">Informations</CardTitle>
                     </CardHeader>
@@ -150,39 +173,39 @@ export default function EtatFournisseurPage() {
                         </p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className={fiscalMode ? "border-amber-500/20 bg-amber-500/5" : ""}>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Volume d'Achats</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Volume d'Achats {fiscalMode ? '[F]' : ''}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {(achats?.reduce((acc, a) => acc + Number(a.montant_ttc), 0) || 0).toFixed(2)} MAD
+                            {(filteredAchats?.reduce((acc, a) => acc + Number(a.montant_ttc), 0) || 0).toFixed(2)} DH
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">Total facturé {selectedFournisseurId !== "all" ? "" : "global"}</p>
+                        <p className="text-xs text-muted-foreground mt-1 text-amber-600 font-medium">Total {fiscalMode ? 'facturé' : 'global'}</p>
                     </CardContent>
                 </Card>
-                <Card className="border-destructive">
+                <Card className={`border-destructive ${fiscalMode ? "bg-red-500/5" : ""}`}>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-destructive">Dettes (Impayés)</CardTitle>
+                        <CardTitle className="text-sm font-medium text-destructive">Dettes (Restant dû)</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-destructive">{totalImpaye.toFixed(2)} MAD</div>
-                        <p className="text-xs text-muted-foreground mt-1">Total restant dû {selectedFournisseurId !== "all" ? "" : "global"}</p>
+                        <div className="text-2xl font-bold text-destructive">{totalImpaye.toFixed(2)} DH</div>
+                        <p className="text-xs text-muted-foreground mt-1 font-medium">Total dû {fiscalMode ? 'facturé' : 'global'}</p>
                     </CardContent>
                 </Card>
             </div>
 
             <Tabs defaultValue="impayes" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="impayes">Dettes</TabsTrigger>
-                    <TabsTrigger value="achats">Achats Payés</TabsTrigger>
-                    <TabsTrigger value="commandes">Commandes</TabsTrigger>
-                    <TabsTrigger value="historique">Historique</TabsTrigger>
+                <TabsList className={`grid w-full grid-cols-4 p-1 ${fiscalMode ? 'bg-amber-500/10' : ''}`}>
+                    <TabsTrigger value="impayes" className={fiscalMode ? "data-[state=active]:bg-amber-500 data-[state=active]:text-white" : ""}>Dettes</TabsTrigger>
+                    <TabsTrigger value="achats" className={fiscalMode ? "data-[state=active]:bg-amber-500 data-[state=active]:text-white" : ""}>Achats Payés</TabsTrigger>
+                    <TabsTrigger value="commandes" className={fiscalMode ? "data-[state=active]:bg-amber-500 data-[state=active]:text-white" : ""}>Commandes</TabsTrigger>
+                    <TabsTrigger value="historique" className={fiscalMode ? "data-[state=active]:bg-amber-500 data-[state=active]:text-white" : ""}>Historique</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="impayes" className="mt-6">
-                    <Card>
-                        <CardHeader><CardTitle>Factures Impayées</CardTitle></CardHeader>
+                    <Card className={fiscalMode ? "border-amber-500/20" : ""}>
+                        <CardHeader><CardTitle>Achats Impayés {fiscalMode ? 'Facturés' : ''}</CardTitle></CardHeader>
                         <CardContent>
                             <DataTable 
                                 columns={achatsColumns} 
@@ -195,8 +218,8 @@ export default function EtatFournisseurPage() {
                 </TabsContent>
 
                 <TabsContent value="achats" className="mt-6">
-                    <Card>
-                        <CardHeader><CardTitle>Factures / B.A. Payés</CardTitle></CardHeader>
+                    <Card className={fiscalMode ? "border-amber-500/20" : ""}>
+                        <CardHeader><CardTitle>Factures / B.A. Payés {fiscalMode ? 'Facturés' : ''}</CardTitle></CardHeader>
                         <CardContent>
                             <DataTable 
                                 columns={achatsColumns} 
@@ -209,12 +232,12 @@ export default function EtatFournisseurPage() {
                 </TabsContent>
 
                 <TabsContent value="commandes" className="mt-6">
-                    <Card>
-                        <CardHeader><CardTitle>Liste des Commandes</CardTitle></CardHeader>
+                    <Card className={fiscalMode ? "border-amber-500/20" : ""}>
+                        <CardHeader><CardTitle>Liste des Commandes {fiscalMode ? 'Facturées' : ''}</CardTitle></CardHeader>
                         <CardContent>
                             <DataTable 
                                 columns={commandesColumns} 
-                                data={commandes || []} 
+                                data={filteredCommandes || []} 
                                 searchPlaceholder="Chercher..." 
                                 getRowHref={(row) => `/bon-commandes/${row.id}`}
                             />
@@ -223,33 +246,33 @@ export default function EtatFournisseurPage() {
                 </TabsContent>
 
                 <TabsContent value="historique" className="mt-6">
-                    <Card>
+                    <Card className={fiscalMode ? "border-amber-500/20" : ""}>
                         <CardHeader>
-                            <CardTitle>Historique Récent</CardTitle>
-                            <CardDescription>Tous les documents générés.</CardDescription>
+                            <CardTitle>Historique {fiscalMode ? 'Focalisé' : 'Récent'}</CardTitle>
+                            <CardDescription>Tous les documents {fiscalMode ? 'facturés' : 'générés'}.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {!isMounted ? <div className="h-32 flex items-center justify-center text-muted-foreground">Chargement de l'historique...</div> : (
+                            {!isMounted ? <div className="h-32 flex items-center justify-center text-muted-foreground">Chargement...</div> : (
                                 <>
                                     {historiqueGlobal.map((doc, idx) => (
-                                        <div key={idx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border rounded-lg">
+                                        <div key={idx} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border rounded-lg hover:border-amber-500/50 transition-colors ${fiscalMode ? 'bg-amber-500/5 border-amber-500/10' : ''}`}>
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-2">
-                                                    <Badge variant="outline">{doc.doc_type}</Badge>
+                                                    <Badge variant={fiscalMode ? "default" : "outline"} className={fiscalMode ? "bg-amber-500 hover:bg-amber-600" : ""}>{doc.doc_type}</Badge>
                                                     <p className="font-semibold text-sm">{doc.fournisseur?.raison_sociale}</p>
                                                 </div>
                                                 <p className="font-medium">{doc.num}</p>
                                                 <p className="text-xs text-muted-foreground">{doc.date_val.toLocaleDateString("fr-FR")}</p>
                                             </div>
                                             <div className="flex flex-col items-end mt-2 sm:mt-0">
-                                                <span className="font-bold text-orange-600 dark:text-orange-400">{Number(doc.montant).toFixed(2)} MAD</span>
+                                                <span className={`font-bold ${fiscalMode ? "text-amber-600" : "text-orange-600 dark:text-orange-400"}`}>{Number(doc.montant).toFixed(2)} DH</span>
                                                 <Button variant="link" size="sm" asChild className="p-0 h-auto text-xs">
                                                     <Link href={doc.doc_type === "Commande" ? `/bon-commandes/${doc.id}` : `/bon-achats/${doc.id}`}>Voir détails</Link>
                                                 </Button>
                                             </div>
                                         </div>
                                     ))}
-                                    {historiqueGlobal.length === 0 && <p className="text-center text-muted-foreground">Aucun historique disponible.</p>}
+                                    {historiqueGlobal.length === 0 && <p className="text-center text-muted-foreground py-10">Aucun document facturé trouvé pour ce critère.</p>}
                                 </>
                             )}
                         </CardContent>

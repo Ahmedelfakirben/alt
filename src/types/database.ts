@@ -4,7 +4,7 @@ export type DocumentStatut = "brouillon" | "envoye" | "accepte" | "refuse" | "ex
 
 export type TresorerieType = "caisse" | "banque"
 
-export type ModePaiement = "especes" | "carte" | "cheque" | "virement"
+export type ModePaiement = "especes" | "carte" | "cheque" | "virement" | "effet"
 
 export type MouvementType = "entree" | "sortie"
 
@@ -54,6 +54,16 @@ export interface FamilleArticle {
   created_at: string
 }
 
+export interface SousFamilleArticle {
+  id: string
+  famille_id: string
+  libelle: string
+  description: string | null
+  type_code_requis: string | null
+  created_at: string
+  famille?: FamilleArticle
+}
+
 export interface Article {
   id: string
   code: string
@@ -61,6 +71,7 @@ export interface Article {
   code_barre: string | null
   designation: string
   famille_id: string | null
+  sous_famille_id: string | null
   prix_achat: number
   prix_vente: number
   tva: number
@@ -70,7 +81,9 @@ export interface Article {
   created_at: string
   updated_at: string
   famille?: FamilleArticle
+  sous_famille?: SousFamilleArticle
   stock_actuel?: number
+  quantite_fiscale?: number
 }
 
 export interface Depot {
@@ -88,6 +101,7 @@ export interface Stock {
   article_id: string
   depot_id: string
   quantite: number
+  quantite_fiscale?: number
   article?: Article
   depot?: Depot
 }
@@ -112,7 +126,21 @@ export interface Tresorerie {
   libelle: string
   type: TresorerieType
   solde: number
+  solde_fiscale: number
   created_at: string
+}
+
+export interface Depense {
+  id: string
+  numero: string
+  date: string
+  categorie: string
+  montant: number
+  tresorerie_id: string
+  notes: string | null
+  inclure_tva: boolean
+  created_at: string
+  tresorerie?: Tresorerie
 }
 
 // Documents de vente
@@ -129,6 +157,7 @@ export interface Devis {
   notes: string | null
   validite_jours: number
   inclure_tva: boolean
+  is_regularisation: boolean
   created_at: string
   updated_at: string
   client?: Client
@@ -145,7 +174,9 @@ export interface DevisLigne {
   prix_unitaire: number
   tva: number
   montant_ht: number
+  is_regularisation?: boolean
   ordre: number
+  codes_articles?: string[] | null
   article?: Article
 }
 
@@ -164,6 +195,7 @@ export interface BonLivraison {
   montant_regle?: number
   notes: string | null
   inclure_tva: boolean
+  is_regularisation: boolean
   created_at: string
   client?: Client
   depot?: Depot
@@ -179,7 +211,9 @@ export interface BonLivraisonLigne {
   prix_unitaire: number
   tva: number
   montant_ht: number
+  is_regularisation?: boolean
   ordre: number
+  codes_articles?: string[] | null
   article?: Article
 }
 
@@ -213,6 +247,7 @@ export interface BonRetourLigne {
   tva: number
   montant_ht: number
   ordre: number
+  codes_articles?: string[] | null
 }
 
 // Documents d'achat
@@ -242,6 +277,7 @@ export interface BonCommandeLigne {
   tva: number
   montant_ht: number
   ordre: number
+  codes_articles?: string[] | null
 }
 
 export interface BonAchat {
@@ -275,6 +311,7 @@ export interface BonAchatLigne {
   tva: number
   montant_ht: number
   ordre: number
+  codes_articles?: string[] | null
 }
 
 export interface BonRetourAchat {
@@ -306,6 +343,7 @@ export interface BonRetourAchatLigne {
   tva: number
   montant_ht: number
   ordre: number
+  codes_articles?: string[] | null
 }
 
 // POS
@@ -338,6 +376,7 @@ export interface VentePosLigne {
   prix_unitaire: number
   tva: number
   montant_ht: number
+  codes_articles?: string[] | null
 }
 
 export interface MouvementStock {
@@ -348,6 +387,7 @@ export interface MouvementStock {
   quantite: number
   reference_type: string
   reference_id: string
+  inclure_tva: boolean
   created_at: string
   article?: Article
   depot?: Depot
@@ -374,15 +414,14 @@ export interface Paiement {
   reference_type: string
   reference_id: string
   note: string | null
+  date_echeance: string | null
+  reference_paiement: string | null
+  statut_versement?: "encaisse" | "rejete" | "en_attente"
   created_at: string
   tresorerie?: Tresorerie
 }
 
 // Supabase Database type (simplified for SSR client)
-// Note: Insert types must exclude relation properties (e.g. famille?, responsable?, client?, lignes?)
-// because those are populated by Supabase joins, not actual DB columns.
-// Update types use Partial<Row> because Supabase's internal generics derive query
-// return types from the relationship between Row, Insert, and Update.
 export interface Database {
   public: {
     Tables: {
@@ -390,11 +429,13 @@ export interface Database {
       clients: { Row: Client; Insert: Omit<Client, "id" | "created_at" | "updated_at">; Update: Partial<Client> }
       fournisseurs: { Row: Fournisseur; Insert: Omit<Fournisseur, "id" | "created_at" | "updated_at">; Update: Partial<Fournisseur> }
       familles_articles: { Row: FamilleArticle; Insert: Omit<FamilleArticle, "id" | "created_at">; Update: Partial<FamilleArticle> }
-      articles: { Row: Article; Insert: Omit<Article, "id" | "created_at" | "updated_at" | "famille">; Update: Partial<Article> }
+      sous_familles_articles: { Row: SousFamilleArticle; Insert: Omit<SousFamilleArticle, "id" | "created_at">; Update: Partial<SousFamilleArticle> }
+      articles: { Row: Article; Insert: Omit<Article, "id" | "created_at" | "updated_at" | "famille" | "sous_famille" | "stock_actuel" | "quantite_fiscale">; Update: Partial<Article> }
       depots: { Row: Depot; Insert: Omit<Depot, "id" | "created_at" | "responsable">; Update: Partial<Depot> }
       stock: { Row: Stock; Insert: Omit<Stock, "id" | "article" | "depot">; Update: Partial<Stock> }
       salaries: { Row: Salarie; Insert: Omit<Salarie, "id" | "created_at">; Update: Partial<Salarie> }
       tresoreries: { Row: Tresorerie; Insert: Omit<Tresorerie, "id" | "created_at">; Update: Partial<Tresorerie> }
+      depenses: { Row: Depense; Insert: Omit<Depense, "id" | "created_at" | "tresorerie">; Update: Partial<Depense> }
       devis: { Row: Devis; Insert: Omit<Devis, "id" | "created_at" | "updated_at" | "client" | "commercial" | "lignes">; Update: Partial<Devis> }
       devis_lignes: { Row: DevisLigne; Insert: Omit<DevisLigne, "id" | "article">; Update: Partial<DevisLigne> }
       bon_livraisons: { Row: BonLivraison; Insert: Omit<BonLivraison, "id" | "created_at" | "client" | "depot" | "lignes">; Update: Partial<BonLivraison> }
@@ -415,4 +456,3 @@ export interface Database {
     }
   }
 }
-

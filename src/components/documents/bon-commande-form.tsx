@@ -88,6 +88,7 @@ export function BonCommandeForm({ defaultValues, onSubmit, isLoading }: BonComma
                             setValue={form.setValue}
                             articles={articles || []}
                             inclureTva={form.watch("inclure_tva")}
+                            docType="bon_commande"
                         />
                         {form.formState.errors.lignes && <p className="text-sm text-destructive mt-2">{form.formState.errors.lignes.message || "Vérifiez les lignes"}</p>}
                     </CardContent>

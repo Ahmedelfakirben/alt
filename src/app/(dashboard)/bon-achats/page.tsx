@@ -34,8 +34,18 @@ export default function BonAchatsPage() {
     const columns: ColumnDef<BonAchat>[] = [
         { accessorKey: "numero", header: "N° BA" },
         { accessorKey: "date", header: "Date", cell: ({ row }) => new Date(row.original.date).toLocaleDateString("fr-FR") },
-        { accessorKey: "fournisseur", header: "Fournisseur", cell: ({ row }) => row.original.fournisseur?.raison_sociale || "—" },
-        { accessorKey: "depot", header: "Dépôt", cell: ({ row }) => (row.original as any).depot?.libelle || "—" },
+        { 
+            accessorFn: (row) => row.fournisseur?.raison_sociale, 
+            id: "fournisseur", 
+            header: "Fournisseur", 
+            cell: ({ row }) => row.original.fournisseur?.raison_sociale || "—" 
+        },
+        { 
+            accessorFn: (row) => (row as any).depot?.libelle, 
+            id: "depot", 
+            header: "Dépôt", 
+            cell: ({ row }) => (row.original as any).depot?.libelle || "—" 
+        },
         { accessorKey: "montant_ttc", header: "Montant TTC", cell: ({ row }) => `${Number(row.original.montant_ttc).toFixed(2)} MAD` },
         {
             id: "type",

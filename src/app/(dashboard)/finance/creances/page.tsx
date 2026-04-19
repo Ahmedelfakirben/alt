@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useClients } from "@/hooks/use-clients"
 import { useDevisByClient, useDevisList } from "@/hooks/use-devis"
 import { useBonLivraisonsByClient, useBonLivraisonList } from "@/hooks/use-bon-livraisons"
@@ -9,12 +9,13 @@ import { ColumnDef } from "@tanstack/react-table"
 import type { Devis, BonLivraison } from "@/types/database"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Eye } from "lucide-react"
+import { Eye, ReceiptText, Globe } from "lucide-react"
 import Link from "next/link"
 import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { useFiscalMode } from "@/providers/fiscal-mode-context"
 
 const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     paye: "default",
@@ -28,6 +29,7 @@ export default function EtatClientPage() {
     const { data: clients, isLoading: loadingClients } = useClients()
     const [selectedClientId, setSelectedClientId] = useState<string>("all")
     const [isMounted, setIsMounted] = useState(false)
+    const { fiscalMode } = useFiscalMode()
 
     useEffect(() => {
         setIsMounted(true)
@@ -39,8 +41,19 @@ export default function EtatClientPage() {
     const { data: allDevis, isLoading: loadingAllDevis } = useDevisList()
     const { data: allFactures, isLoading: loadingAllFactures } = useBonLivraisonList()
 
-    const devis = selectedClientId !== "all" ? clientDevis : allDevis
-    const factures = selectedClientId !== "all" ? clientFactures : allFactures
+    // FISCAL FILTERING
+    const filteredDevis = useMemo(() => {
+        const raw = selectedClientId !== "all" ? clientDevis : allDevis
+        if (!fiscalMode) return raw || []
+        return (raw || []).filter(d => d.inclure_tva === true)
+    }, [clientDevis, allDevis, selectedClientId, fiscalMode])
+
+    const filteredFactures = useMemo(() => {
+        const raw = selectedClientId !== "all" ? clientFactures : allFactures
+        if (!fiscalMode) return raw || []
+        return (raw || []).filter(f => f.inclure_tva === true)
+    }, [clientFactures, allFactures, selectedClientId, fiscalMode])
+
     const isLoading = loadingClients || (selectedClientId !== "all" ? (loadingClientDevis || loadingClientFactures) : (loadingAllDevis || loadingAllFactures))
 
     const devisColumns: ColumnDef<Devis>[] = [
@@ -98,12 +111,12 @@ export default function EtatClientPage() {
 
     if (isLoading) return <LoadingScreen />
 
-    const facturesPayees = factures?.filter(f => f.statut_paiement === "paye" || f.statut_paiement === "partiel" && Number(f.montant_regle) > 0) || []
-    const impayes = factures?.filter(f => !f.statut_paiement || f.statut_paiement === "impaye" || (f.statut_paiement === "partiel" && Number(f.montant_ttc) > Number(f.montant_regle || 0))) || []
+    const facturesPayees = filteredFactures?.filter(f => f.statut_paiement === "paye" || f.statut_paiement === "partiel" && Number(f.montant_regle) > 0) || []
+    const impayes = filteredFactures?.filter(f => !f.statut_paiement || f.statut_paiement === "impaye" || (f.statut_paiement === "partiel" && Number(f.montant_ttc) > Number(f.montant_regle || 0))) || []
 
     const historiqueGlobal = [
-        ...(devis || []).map(d => ({ ...d, doc_type: "Devis", num: d.numero, montant: d.montant_ttc, date_val: new Date(d.date) })),
-        ...(factures || []).map(f => ({ ...f, doc_type: "Facture/BL", num: f.numero, montant: f.montant_ttc, date_val: new Date(f.date) }))
+        ...(filteredDevis || []).map(d => ({ ...d, doc_type: "Devis", num: d.numero, montant: d.montant_ttc, date_val: new Date(d.date) })),
+        ...(filteredFactures || []).map(f => ({ ...f, doc_type: "Facture/BL", num: f.numero, montant: f.montant_ttc, date_val: new Date(f.date) }))
     ].sort((a, b) => b.date_val.getTime() - a.date_val.getTime())
 
     const totalImpaye = impayes.reduce((acc, curr) => acc + (Number(curr.montant_ttc) - Number(curr.montant_regle || 0)), 0)
@@ -112,15 +125,25 @@ export default function EtatClientPage() {
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Gestion des Comptes</h2>
-                    <p className="text-muted-foreground">
-                        {selectedClientId !== "all" ? `Dossier complet de ${clientActuel?.raison_sociale}` : "Aperçu global des créances clients"}
-                    </p>
+                <div className="flex items-center gap-3">
+                    <div className={`p-3 rounded-xl border ${fiscalMode ? "bg-amber-500/10 border-amber-500/20" : "bg-muted border-border"}`}>
+                        {fiscalMode ? <ReceiptText className="h-6 w-6 text-amber-500" /> : <Globe className="h-6 w-6 text-muted-foreground" />}
+                    </div>
+                    <div>
+                        <h2 className={`text-3xl font-bold tracking-tight ${fiscalMode ? "text-amber-500" : ""}`}>
+                            {fiscalMode ? "Comptes Facturés" : "Gestion des Comptes"}
+                        </h2>
+                        <p className="text-muted-foreground">
+                            {selectedClientId !== "all" 
+                                ? `Dossier ${fiscalMode ? 'fiscal' : 'complet'} de ${clientActuel?.raison_sociale}` 
+                                : `Aperçu ${fiscalMode ? 'des créances facturées' : 'global des créances clients'}`
+                            }
+                        </p>
+                    </div>
                 </div>
                 <div className="w-full md:w-[300px] flex items-center gap-2">
                     <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                        <SelectTrigger>
+                        <SelectTrigger className={fiscalMode ? "border-amber-500/50" : ""}>
                             <SelectValue placeholder="Tous les clients" />
                         </SelectTrigger>
                         <SelectContent>
@@ -137,7 +160,7 @@ export default function EtatClientPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-3 mb-6">
-                <Card>
+                <Card className={fiscalMode ? "border-amber-500/20 bg-amber-500/5" : ""}>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">Informations</CardTitle>
                     </CardHeader>
@@ -150,39 +173,39 @@ export default function EtatClientPage() {
                         </p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className={fiscalMode ? "border-amber-500/20 bg-amber-500/5" : ""}>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Volume d'Affaires</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Volume d'Affaires {fiscalMode ? '[F]' : ''}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {(factures?.reduce((acc, f) => acc + Number(f.montant_ttc), 0) || 0).toFixed(2)} MAD
+                            {(filteredFactures?.reduce((acc, f) => acc + Number(f.montant_ttc), 0) || 0).toFixed(2)} DH
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">Total facturé {selectedClientId !== "all" ? "" : "global"}</p>
+                        <p className="text-xs text-muted-foreground mt-1 text-amber-600 font-medium">Total {fiscalMode ? 'facturé' : 'global'}</p>
                     </CardContent>
                 </Card>
-                <Card className="border-destructive">
+                <Card className={`border-destructive ${fiscalMode ? "bg-red-500/5" : ""}`}>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-destructive">Créances (Impayés)</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-destructive">{totalImpaye.toFixed(2)} MAD</div>
-                        <p className="text-xs text-muted-foreground mt-1">Total restant dû {selectedClientId !== "all" ? "" : "global"}</p>
+                        <div className="text-2xl font-bold text-destructive">{totalImpaye.toFixed(2)} DH</div>
+                        <p className="text-xs text-muted-foreground mt-1 font-medium">Total restant dû {fiscalMode ? 'facturé' : ''}</p>
                     </CardContent>
                 </Card>
             </div>
 
             <Tabs defaultValue="impayes" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="impayes">Impayés</TabsTrigger>
-                    <TabsTrigger value="factures">Factures</TabsTrigger>
-                    <TabsTrigger value="devis">Devis</TabsTrigger>
-                    <TabsTrigger value="historique">Historique</TabsTrigger>
+                <TabsList className={`grid w-full grid-cols-4 p-1 ${fiscalMode ? 'bg-amber-500/10' : ''}`}>
+                    <TabsTrigger value="impayes" className={fiscalMode ? "data-[state=active]:bg-amber-500 data-[state=active]:text-white" : ""}>Impayés</TabsTrigger>
+                    <TabsTrigger value="factures" className={fiscalMode ? "data-[state=active]:bg-amber-500 data-[state=active]:text-white" : ""}>Factures</TabsTrigger>
+                    <TabsTrigger value="devis" className={fiscalMode ? "data-[state=active]:bg-amber-500 data-[state=active]:text-white" : ""}>Devis</TabsTrigger>
+                    <TabsTrigger value="historique" className={fiscalMode ? "data-[state=active]:bg-amber-500 data-[state=active]:text-white" : ""}>Historique</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="impayes" className="mt-6">
-                    <Card>
-                        <CardHeader><CardTitle>Factures Impayées</CardTitle></CardHeader>
+                    <Card className={fiscalMode ? "border-amber-500/20" : ""}>
+                        <CardHeader><CardTitle>Factures Impayées {fiscalMode ? 'Facturées' : ''}</CardTitle></CardHeader>
                         <CardContent>
                             <DataTable 
                                 columns={facturesColumns} 
@@ -195,8 +218,8 @@ export default function EtatClientPage() {
                 </TabsContent>
 
                 <TabsContent value="factures" className="mt-6">
-                    <Card>
-                        <CardHeader><CardTitle>Factures / B.L. Payés</CardTitle></CardHeader>
+                    <Card className={fiscalMode ? "border-amber-500/20" : ""}>
+                        <CardHeader><CardTitle>Factures / B.L. Payés {fiscalMode ? 'Facturés' : ''}</CardTitle></CardHeader>
                         <CardContent>
                             <DataTable 
                                 columns={facturesColumns} 
@@ -209,12 +232,12 @@ export default function EtatClientPage() {
                 </TabsContent>
 
                 <TabsContent value="devis" className="mt-6">
-                    <Card>
-                        <CardHeader><CardTitle>Liste des Devis</CardTitle></CardHeader>
+                    <Card className={fiscalMode ? "border-amber-500/20" : ""}>
+                        <CardHeader><CardTitle>Liste des Devis {fiscalMode ? 'Facturés' : ''}</CardTitle></CardHeader>
                         <CardContent>
                             <DataTable 
                                 columns={devisColumns} 
-                                data={devis || []} 
+                                data={filteredDevis || []} 
                                 searchPlaceholder="Chercher..." 
                                 getRowHref={(row) => `/devis/${row.id}`}
                             />
@@ -223,33 +246,33 @@ export default function EtatClientPage() {
                 </TabsContent>
 
                 <TabsContent value="historique" className="mt-6">
-                    <Card>
+                    <Card className={fiscalMode ? "border-amber-500/20" : ""}>
                         <CardHeader>
-                            <CardTitle>Historique Récent</CardTitle>
-                            <CardDescription>Tous les documents générés.</CardDescription>
+                            <CardTitle>Historique {fiscalMode ? 'Focalisé' : 'Récent'}</CardTitle>
+                            <CardDescription>Tous les documents {fiscalMode ? 'facturés' : 'générés'}.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {!isMounted ? <div className="h-32 flex items-center justify-center text-muted-foreground">Chargement de l'historique...</div> : (
+                            {!isMounted ? <div className="h-32 flex items-center justify-center text-muted-foreground">Chargement...</div> : (
                                 <>
                                     {historiqueGlobal.map((doc, idx) => (
-                                        <div key={idx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border rounded-lg">
+                                        <div key={idx} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border rounded-lg hover:border-amber-500/50 transition-colors ${fiscalMode ? 'bg-amber-500/5 border-amber-500/10' : ''}`}>
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-2">
-                                                    <Badge variant="outline">{doc.doc_type}</Badge>
+                                                    <Badge variant={fiscalMode ? "default" : "outline"} className={fiscalMode ? "bg-amber-500 hover:bg-amber-600" : ""}>{doc.doc_type}</Badge>
                                                     <p className="font-semibold text-sm">{doc.client?.raison_sociale}</p>
                                                 </div>
                                                 <p className="font-medium">{doc.num}</p>
                                                 <p className="text-xs text-muted-foreground">{doc.date_val.toLocaleDateString("fr-FR")}</p>
                                             </div>
                                             <div className="flex flex-col items-end mt-2 sm:mt-0">
-                                                <span className="font-bold text-orange-600 dark:text-orange-400">{Number(doc.montant).toFixed(2)} MAD</span>
+                                                <span className={`font-bold ${fiscalMode ? "text-amber-600" : "text-orange-600 dark:text-orange-400"}`}>{Number(doc.montant).toFixed(2)} DH</span>
                                                 <Button variant="link" size="sm" asChild className="p-0 h-auto text-xs">
                                                     <Link href={doc.doc_type === "Devis" ? `/devis/${doc.id}` : `/bon-livraisons/${doc.id}`}>Voir détails</Link>
                                                 </Button>
                                             </div>
                                         </div>
                                     ))}
-                                    {historiqueGlobal.length === 0 && <p className="text-center text-muted-foreground">Aucun historique disponible.</p>}
+                                    {historiqueGlobal.length === 0 && <p className="text-center text-muted-foreground py-10">Aucun document facturé trouvé pour ce critère.</p>}
                                 </>
                             )}
                         </CardContent>

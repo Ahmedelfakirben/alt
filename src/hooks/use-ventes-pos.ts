@@ -55,18 +55,26 @@ export function useCreateVentePos() {
                     numero: numero || `VP-${Date.now()}`,
                     date: new Date().toISOString().split("T")[0],
                     client_id: formData.client_id || null,
-                    commercial_id, tresorerie_id: formData.tresorerie_id,
+                    commercial_id, 
+                    tresorerie_id: formData.tresorerie_id,
                     depot_id: formData.depot_id,
-                    montant_ht, montant_tva, montant_ttc,
+                    montant_ht, 
+                    montant_tva, 
+                    montant_ttc,
                     mode_paiement: formData.mode_paiement,
+                    inclure_tva: formData.inclure_tva, // Added fiscal flag
                 })
                 .select().single()
             if (error) throw error
 
             const lignesData = lignes.map((l) => ({
-                vente_pos_id: (vente as any).id, article_id: l.article_id,
-                designation: l.designation, quantite: l.quantite, prix_unitaire: l.prix_unitaire,
-                tva: l.tva, montant_ht: l.quantite * l.prix_unitaire,
+                vente_pos_id: (vente as any).id, 
+                article_id: l.article_id,
+                designation: l.designation, 
+                quantite: l.quantite, 
+                prix_unitaire: l.prix_unitaire,
+                tva: l.tva, 
+                montant_ht: l.quantite * l.prix_unitaire,
             }))
             const { error: le } = await (supabase
                 .from("vente_pos_lignes") as any)

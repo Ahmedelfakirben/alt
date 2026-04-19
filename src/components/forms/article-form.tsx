@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Loader2 } from "lucide-react"
 import { useFamilles } from "@/hooks/use-familles"
+import { useSousFamillesByFamille } from "@/hooks/use-sous-familles"
 import type { Article } from "@/types/database"
 import { useNextCode } from "@/hooks/use-next-code"
 import { useEffect } from "react"
@@ -45,6 +46,7 @@ export function ArticleForm({ defaultValues, onSubmit, isLoading }: ArticleFormP
             code_barre: defaultValues?.code_barre || "",
             designation: defaultValues?.designation || "",
             famille_id: defaultValues?.famille_id || "",
+            sous_famille_id: defaultValues?.sous_famille_id || "",
             prix_achat: defaultValues?.prix_achat || 0,
             prix_vente: defaultValues?.prix_vente || 0,
             tva: defaultValues?.tva ?? 20,
@@ -53,7 +55,10 @@ export function ArticleForm({ defaultValues, onSubmit, isLoading }: ArticleFormP
             actif: defaultValues?.actif ?? true,
         },
     })
-    
+
+    const selectedFamilleId = form.watch("famille_id")
+    const { data: sousFamilles } = useSousFamillesByFamille(selectedFamilleId || "")
+
     const { data: nextCode, isLoading: isCodeLoading } = useNextCode("articles", "ART")
 
     useEffect(() => {
@@ -61,6 +66,13 @@ export function ArticleForm({ defaultValues, onSubmit, isLoading }: ArticleFormP
             form.setValue("code", nextCode)
         }
     }, [nextCode, defaultValues, form])
+
+    // Reset sous_famille if famille changes
+    useEffect(() => {
+        if (selectedFamilleId !== defaultValues?.famille_id) {
+            form.setValue("sous_famille_id", "")
+        }
+    }, [selectedFamilleId, form, defaultValues])
 
     return (
         <Form {...form}>
@@ -100,7 +112,7 @@ export function ArticleForm({ defaultValues, onSubmit, isLoading }: ArticleFormP
                             control={form.control}
                             name="designation"
                             render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="md:col-span-2">
                                     <FormLabel>Désignation *</FormLabel>
                                     <FormControl>
                                         <Input placeholder="Nom de l'article" {...field} />
@@ -115,7 +127,7 @@ export function ArticleForm({ defaultValues, onSubmit, isLoading }: ArticleFormP
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Famille</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
+                                    <Select onValueChange={field.onChange} value={field.value || undefined}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Sélectionner une famille" />
@@ -125,6 +137,34 @@ export function ArticleForm({ defaultValues, onSubmit, isLoading }: ArticleFormP
                                             {familles?.map((f) => (
                                                 <SelectItem key={f.id} value={f.id}>
                                                     {f.code} - {f.libelle}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="sous_famille_id"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Sous-Famille</FormLabel>
+                                    <Select 
+                                        onValueChange={field.onChange} 
+                                        value={field.value || undefined}
+                                        disabled={!selectedFamilleId}
+                                    >
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder={selectedFamilleId ? "Sélectionner une sous-famille" : "Sélectionnez d'abord une famille"} />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {sousFamilles?.map((sf) => (
+                                                <SelectItem key={sf.id} value={sf.id}>
+                                                    {sf.libelle}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -254,7 +294,7 @@ export function ArticleForm({ defaultValues, onSubmit, isLoading }: ArticleFormP
                 </Card>
 
                 <div className="flex gap-4">
-                    <Button type="submit" disabled={isLoading}>
+                    <Button type="submit" disabled={isLoading} className="bg-orange-600 hover:bg-orange-700">
                         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {defaultValues ? "Mettre à jour" : "Créer l'article"}
                     </Button>

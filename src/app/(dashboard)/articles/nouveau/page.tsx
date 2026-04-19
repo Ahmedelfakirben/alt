@@ -6,6 +6,8 @@ import { ArticleForm } from "@/components/forms/article-form"
 import type { ArticleFormData } from "@/lib/validations/master-data"
 import { toast } from "sonner"
 
+export const dynamic = "force-dynamic"
+
 export default function NouvelArticlePage() {
     const router = useRouter()
     const createArticle = useCreateArticle()

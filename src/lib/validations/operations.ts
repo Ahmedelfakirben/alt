@@ -14,12 +14,27 @@ export const ventePosSchema = z.object({
     client_id: z.string().optional().nullable(),
     tresorerie_id: z.string().min(1, "La trésorerie est obligatoire"),
     depot_id: z.string().min(1, "Le dépôt est obligatoire"),
-    mode_paiement: z.enum(["especes", "carte", "cheque", "virement"]).default("especes"),
+    mode_paiement: z.enum(["especes", "carte", "cheque", "virement", "effet"]).default("especes"),
+    inclure_tva: z.boolean().default(false),
     lignes: z.array(ventePosLigneSchema).min(1, "Au moins un article est requis"),
 })
 
 export type VentePosFormData = z.infer<typeof ventePosSchema>
 export type VentePosLigneFormData = z.infer<typeof ventePosLigneSchema>
+
+// Règlements / Paiements
+export const paiementSchema = z.object({
+    id: z.string().optional(),
+    date: z.string().min(1, "La date est obligatoire"),
+    montant: z.coerce.number().min(0.01, "Le montant doit être supérieur à 0"),
+    mode_paiement: z.enum(["especes", "carte", "cheque", "virement", "effet"]),
+    tresorerie_id: z.string().min(1, "La trésorerie est obligatoire"),
+    reference_paiement: z.string().optional().nullable(), // No opération o No cheque
+    date_echeance: z.string().optional().nullable(), // Vencimiento cheque/effet
+    note: z.string().optional().nullable(),
+})
+
+export type PaiementFormData = z.infer<typeof paiementSchema>
 
 // Mouvement de trésorerie
 export const mouvementTresorerieSchema = z.object({

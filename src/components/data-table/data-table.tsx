@@ -72,6 +72,20 @@ export function DataTable<TData, TValue>({
       columnFilters,
       globalFilter,
     },
+    globalFilterFn: (row, columnId, filterValue) => {
+      const value = row.getValue(columnId)
+      if (value == null) return false
+      
+      const searchStr = String(filterValue).toLowerCase()
+      
+      if (typeof value === "object") {
+        const obj = value as any
+        const combined = `${obj.nom || ""} ${obj.raison_sociale || ""} ${obj.prenom || ""} ${obj.code || ""}`.toLowerCase()
+        return combined.includes(searchStr)
+      }
+
+      return String(value).toLowerCase().includes(searchStr)
+    },
     initialState: {
       pagination: { pageSize: 20 },
     },

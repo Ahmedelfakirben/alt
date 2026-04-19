@@ -32,12 +32,22 @@ export const familleArticleSchema = z.object({
 
 export type FamilleArticleFormData = z.infer<typeof familleArticleSchema>
 
+export const sousFamilleArticleSchema = z.object({
+  famille_id: z.string().min(1, "La famille est obligatoire"),
+  libelle: z.string().min(1, "Le libellé est obligatoire"),
+  description: z.string().optional().nullable(),
+  type_code_requis: z.string().optional().nullable(),
+})
+
+export type SousFamilleArticleFormData = z.infer<typeof sousFamilleArticleSchema>
+
 export const articleSchema = z.object({
   code: z.string().min(1, "Le code est obligatoire"),
   reference: z.string().optional().nullable(),
   code_barre: z.string().optional().nullable(),
   designation: z.string().min(1, "La désignation est obligatoire"),
   famille_id: z.string().optional().nullable(),
+  sous_famille_id: z.string().optional().nullable(),
   prix_achat: z.coerce.number().min(0, "Le prix d'achat doit être positif"),
   prix_vente: z.coerce.number().min(0, "Le prix de vente doit être positif"),
   tva: z.coerce.number().min(0).max(100, "La TVA doit être entre 0 et 100"),

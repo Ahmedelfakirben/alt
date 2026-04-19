@@ -49,8 +49,18 @@ export default function BonLivraisonsPage() {
     const columns: ColumnDef<BonLivraison>[] = [
         { accessorKey: "numero", header: "N° BL" },
         { accessorKey: "date", header: "Date", cell: ({ row }) => new Date(row.original.date).toLocaleDateString("fr-FR") },
-        { accessorKey: "client", header: "Client", cell: ({ row }) => row.original.client?.raison_sociale || "—" },
-        { accessorKey: "depot", header: "Dépôt", cell: ({ row }) => (row.original as any).depot?.libelle || "—" },
+        { 
+            accessorFn: (row) => row.client?.raison_sociale, 
+            id: "client", 
+            header: "Client", 
+            cell: ({ row }) => row.original.client?.raison_sociale || "—" 
+        },
+        { 
+            accessorFn: (row) => (row as any).depot?.libelle, 
+            id: "depot", 
+            header: "Dépôt", 
+            cell: ({ row }) => (row.original as any).depot?.libelle || "—" 
+        },
         { accessorKey: "montant_ttc", header: "Montant TTC", cell: ({ row }) => `${Number(row.original.montant_ttc).toFixed(2)} MAD` },
         {
             id: "type",
@@ -62,7 +72,9 @@ export default function BonLivraisonsPage() {
             ),
         },
         {
-            accessorKey: "statut", header: "Statut",
+            accessorFn: (row) => statutLabels[row.statut] || row.statut,
+            id: "statut", 
+            header: "Statut",
             cell: ({ row }) => <Badge variant={statutColors[row.original.statut] || "secondary"}>{statutLabels[row.original.statut] || row.original.statut}</Badge>,
         },
         {

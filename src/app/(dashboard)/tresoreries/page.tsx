@@ -6,7 +6,7 @@ import { DataTable } from "@/components/data-table/data-table"
 import type { Tresorerie } from "@/types/database"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MoreHorizontal, Pencil, Trash2, Eye } from "lucide-react"
+import { MoreHorizontal, Pencil, Trash2, Eye, Wallet } from "lucide-react"
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -17,10 +17,12 @@ import {
 import Link from "next/link"
 import { toast } from "sonner"
 import { LoadingScreen } from "@/components/ui/loading-screen"
+import { useFiscalMode } from "@/providers/fiscal-mode-context"
 
 export default function TresoreriesPage() {
     const { data: tresoreries, isLoading } = useTresoreries()
     const deleteTresorerie = useDeleteTresorerie()
+    const { fiscalMode } = useFiscalMode()
 
     const handleDelete = async (id: string) => {
         try {
@@ -45,8 +47,18 @@ export default function TresoreriesPage() {
         },
         {
             accessorKey: "solde",
-            header: "Solde",
-            cell: ({ row }) => `${Number(row.original.solde).toFixed(2)} DH`,
+            header: fiscalMode ? "Solde Fiscal" : "Solde",
+            cell: ({ row }) => {
+                const solde = fiscalMode 
+                    ? (row.original as any).solde_fiscale ?? 0 
+                    : row.original.solde
+                
+                return (
+                    <div className={`font-bold ${fiscalMode ? "text-amber-600" : ""}`}>
+                        {Number(solde).toFixed(2)} DH
+                    </div>
+                )
+            },
         },
         {
             id: "actions",
@@ -89,9 +101,21 @@ export default function TresoreriesPage() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h2 className="text-3xl font-bold tracking-tight">Trésoreries</h2>
-                <p className="text-muted-foreground">Gérez vos caisses et comptes bancaires</p>
+            <div className="flex justify-between items-center">
+                <div>
+                    <h2 className={`text-3xl font-bold tracking-tight ${fiscalMode ? "text-amber-500" : ""}`}>
+                        {fiscalMode ? "Trésoreries Facturées" : "Trésoreries"}
+                    </h2>
+                    <p className="text-muted-foreground">
+                        {fiscalMode ? "États de trésorerie basés uniquement sur les règlements facturés" : "Gérez vos caisses et comptes bancaires globaux"}
+                    </p>
+                </div>
+                {fiscalMode && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 font-bold text-sm">
+                        <Wallet className="h-4 w-4" />
+                        Mode Fiscal Actif
+                    </div>
+                )}
             </div>
             <DataTable 
                 columns={columns} 

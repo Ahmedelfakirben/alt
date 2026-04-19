@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import type { BonRetourAchat } from "@/types/database"
 import type { BonRetourAchatFormData } from "@/lib/validations/documents"
 import { useFiscalMode } from "@/providers/fiscal-mode-context"
+import { cleanEmptyStrings } from "@/lib/utils"
 
 export function useBonRetourAchatList() {
     const supabase = createClient()
@@ -91,11 +92,9 @@ export function useCreateBonRetourAchat() {
                     fournisseur_id: formData.fournisseur_id,
                     depot_id: formData.depot_id,
                     motif: formData.motif || null,
-                    statut: "brouillon",
+                    statut: "valide",
                     montant_ht, montant_tva, montant_ttc,
                     notes: formData.notes || null,
-                    tresorerie_id: formData.tresorerie_id || null,
-                    mode_paiement: formData.mode_paiement || null,
                     inclure_tva: formData.inclure_tva,
                 })
                 .select().single()
@@ -107,24 +106,27 @@ export function useCreateBonRetourAchat() {
                 return {
                     bon_retour_achat_id: (bra as any).id, article_id: l.article_id || null,
                     designation: l.designation, quantite: l.quantite, prix_unitaire: l.prix_unitaire,
-                    tva: l.tva, montant_ht: line_ht, ordre: i,
+                    tva: l.tva, montant_ht: line_ht, codes_articles: l.codes_articles || [], ordre: i,
                 }
             })
             const { error: le } = await (supabase.from("bon_retour_achat_lignes") as any).insert(lignesData)
             if (le) throw le
 
-            for (const l of lignes) {
-                if (l.article_id) {
-                    await (supabase.rpc as any)("update_stock", {
-                        p_article_id: l.article_id,
-                        p_depot_id: formData.depot_id,
-                        p_quantite: l.quantite,
-                        p_type: "sortie",
-                        p_ref_type: "bon_retour_achat",
-                        p_ref_id: (bra as any).id,
-                        p_inclure_tva: formData.inclure_tva
-                    })
-                }
+            // Insert initial payments
+            if (formData.paiements && formData.paiements.length > 0) {
+                const paiementsData = formData.paiements.map(p => cleanEmptyStrings({
+                    date: p.date,
+                    montant: p.montant,
+                    mode_paiement: p.mode_paiement,
+                    tresorerie_id: p.tresorerie_id,
+                    reference_type: "bon_retour_achat",
+                    reference_id: (bra as any).id,
+                    note: p.note,
+                    reference_paiement: p.reference_paiement,
+                    date_echeance: p.date_echeance,
+                }))
+                const { error: pError } = await (supabase.from("paiements") as any).insert(paiementsData)
+                if (pError) throw pError
             }
 
             return bra
@@ -151,8 +153,6 @@ export function useUpdateBonRetourAchat() {
                     date: formData.date, fournisseur_id: formData.fournisseur_id,
                     depot_id: formData.depot_id, motif: formData.motif || null,
                     notes: formData.notes || null,
-                    tresorerie_id: formData.tresorerie_id || null,
-                    mode_paiement: formData.mode_paiement || null,
                     inclure_tva: formData.inclure_tva,
                 })
                 .eq("id", id).select().single()
@@ -165,7 +165,7 @@ export function useUpdateBonRetourAchat() {
                 return {
                     bon_retour_achat_id: id, article_id: l.article_id || null,
                     designation: l.designation, quantite: l.quantite, prix_unitaire: l.prix_unitaire,
-                    tva: l.tva, montant_ht: line_ht, ordre: i,
+                    tva: l.tva, montant_ht: line_ht, codes_articles: l.codes_articles || [], ordre: i,
                 }
             })
             const { error: le } = await (supabase.from("bon_retour_achat_lignes") as any).insert(lignesData)

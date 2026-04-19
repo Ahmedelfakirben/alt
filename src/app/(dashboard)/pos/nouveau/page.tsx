@@ -45,7 +45,12 @@ export default function PosNouveauPage() {
     const [modePaiement, setModePaiement] = useState<"especes" | "carte" | "cheque" | "virement">("especes")
 
     const filteredArticles = useMemo(() =>
-        articles?.filter((a) => a.designation.toLowerCase().includes(search.toLowerCase()) || a.code.toLowerCase().includes(search.toLowerCase())) || [],
+        articles?.filter((a) => {
+            const matchesSearch = a.designation.toLowerCase().includes(search.toLowerCase()) || a.code.toLowerCase().includes(search.toLowerCase())
+            // POS is usually strictly in-stock unless we add a toggle here too.
+            // For now, filtering by stock > 0.
+            return matchesSearch && (a as any).stock_actuel > 0
+        }) || [],
         [articles, search]
     )
 
@@ -88,6 +93,7 @@ export default function PosNouveauPage() {
                     tresorerie_id: tresorerieId,
                     depot_id: depotId,
                     mode_paiement: modePaiement,
+                    inclure_tva: false,
                     lignes: cart.map(({ code, ...ligne }) => ligne),
                 },
                 commercial_id: profile?.id || "",

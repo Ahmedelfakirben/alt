@@ -22,6 +22,9 @@ import {
   Boxes,
   Settings,
   LogOut,
+  Wallet,
+  Layers,
+  Scale,
 } from "lucide-react"
 import {
   Sidebar,
@@ -54,7 +57,9 @@ const navigation = [
       { title: "Fournisseurs", url: "/fournisseurs", icon: Truck },
       { title: "Articles", url: "/articles", icon: Package },
       { title: "Familles", url: "/familles", icon: FolderTree },
+      { title: "Sous-familles", url: "/sous-familles", icon: Layers },
       { title: "Dépôts", url: "/depots", icon: Warehouse },
+      { title: "Dépenses", url: "/depenses", icon: Wallet },
       { title: "Salariés", url: "/salaries", icon: UserCog },
       { title: "Trésoreries", url: "/tresoreries", icon: Landmark },
     ],
@@ -78,9 +83,12 @@ const navigation = [
   {
     label: "Finance",
     items: [
+      { title: "État Général", url: "/finance/etat-general", icon: ClipboardList },
       { title: "État du Client", url: "/finance/creances", icon: Landmark },
       { title: "État du Fournisseur", url: "/finance/dettes", icon: ClipboardCheck },
+      { title: "Portefeuille", url: "/finance/portefeuille", icon: Wallet },
       { title: "Comptabilité", url: "/finance/comptabilite", icon: FileText },
+      { title: "Régularisation & Balance", url: "/finance/regularisation", icon: Scale },
     ],
   },
   {

@@ -6,7 +6,7 @@ import { DataTable } from "@/components/data-table/data-table"
 import type { Article } from "@/types/database"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MoreHorizontal, Pencil, Trash2, Eye } from "lucide-react"
+import { MoreHorizontal, Pencil, Trash2, Eye, Package } from "lucide-react"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -27,10 +27,12 @@ import {
 import Link from "next/link"
 import { toast } from "sonner"
 import { LoadingScreen } from "@/components/ui/loading-screen"
+import { useFiscalMode } from "@/providers/fiscal-mode-context"
 
 export default function ArticlesPage() {
     const { data: articles, isLoading } = useArticles()
     const deleteArticle = useDeleteArticle()
+    const { fiscalMode } = useFiscalMode()
 
     const handleDelete = async (id: string) => {
         try {
@@ -44,12 +46,18 @@ export default function ArticlesPage() {
     const columns: ColumnDef<Article>[] = [
         { accessorKey: "code", header: "Code" },
         { accessorKey: "reference", header: "Réf." },
-        { accessorKey: "code_barre", header: "Code Barre" },
         { accessorKey: "designation", header: "Désignation" },
         {
-            accessorKey: "famille",
+            accessorFn: (row) => (row as any).famille?.libelle,
+            id: "famille",
             header: "Famille",
             cell: ({ row }) => (row.original as any).famille?.libelle || "—",
+        },
+        {
+            accessorFn: (row) => (row as any).sous_famille?.libelle,
+            id: "sous_famille",
+            header: "Sous-Famille",
+            cell: ({ row }) => (row.original as any).sous_famille?.libelle || "—",
         },
         {
             accessorKey: "prix_achat",
@@ -58,11 +66,16 @@ export default function ArticlesPage() {
         },
         {
             accessorKey: "stock_actuel",
-            header: "Stock",
+            header: fiscalMode ? "Stock [F]" : "Stock",
             cell: ({ row }) => {
-                const stock = (row.original as any).stock_actuel ?? 0
+                // Determine which stock to show based on fiscal mode
+                const stock = fiscalMode 
+                    ? (row.original as any).quantite_fiscale ?? 0 
+                    : (row.original as any).stock_actuel ?? 0
+                
                 return (
-                    <div className={`font-bold ${stock <= 0 ? "text-destructive" : stock <= (row.original.seuil_alerte || 0) ? "text-orange-500" : ""}`}>
+                    <div className={`font-bold flex items-center gap-1.5 ${stock <= 0 ? "text-destructive" : stock <= (row.original.seuil_alerte || 0) ? "text-orange-500" : ""}`}>
+                        {fiscalMode && <Badge variant="outline" className="text-[9px] h-3.5 px-1 border-amber-500/50 text-amber-600 bg-amber-500/5">F</Badge>}
                         {stock}
                     </div>
                 )
@@ -79,7 +92,8 @@ export default function ArticlesPage() {
             cell: ({ row }) => `${row.original.tva}%`,
         },
         {
-            accessorKey: "actif",
+            accessorFn: (row) => row.actif ? "Actif" : "Inactif",
+            id: "actif",
             header: "Statut",
             cell: ({ row }) => (
                 <Badge variant={row.original.actif ? "default" : "secondary"}>
@@ -97,7 +111,7 @@ export default function ArticlesPage() {
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-8 w-8 p-0">
-                                    <MoreHorizontal className="h-4 w-4" />
+                                    < MoreHorizontal className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -148,9 +162,20 @@ export default function ArticlesPage() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h2 className="text-3xl font-bold tracking-tight">Articles</h2>
-                <p className="text-muted-foreground">Gérez vos articles et produits</p>
+            <div className="flex justify-between items-center">
+                <div>
+                    <h2 className={`text-3xl font-bold tracking-tight ${fiscalMode ? "text-amber-500" : ""}`}>
+                        {fiscalMode ? "Catalogue Facturé" : "Articles"}
+                    </h2>
+                    <p className="text-muted-foreground">
+                        {fiscalMode ? "Vues des stocks et tarifs facturés avec TVA" : "Gérez vos articles et produits globaux"}
+                    </p>
+                </div>
+                {fiscalMode && (
+                    <Badge variant="outline" className="bg-amber-500/10 border-amber-500/50 text-amber-600 px-3 py-1 animate-pulse">
+                        Mode Fiscal Actif
+                    </Badge>
+                )}
             </div>
             <DataTable
                 columns={columns}
