@@ -112,6 +112,7 @@ export function useCreateDevis() {
           notes: formData.notes || null,
           validite_jours: formData.validite_jours,
           inclure_tva: formData.inclure_tva,
+          is_regularisation: formData.is_regularisation || false,
         })
         .select()
         .single()
@@ -129,6 +130,7 @@ export function useCreateDevis() {
           prix_unitaire: l.prix_unitaire,
           tva: l.tva,
           montant_ht: line_ht,
+          is_regularisation: formData.is_regularisation || false,
           ordre: i,
         }
       })
@@ -171,6 +173,7 @@ export function useUpdateDevis() {
           notes: formData.notes || null,
           validite_jours: formData.validite_jours,
           inclure_tva: formData.inclure_tva,
+          is_regularisation: formData.is_regularisation || false,
         })
         .eq("id", id)
         .select()
@@ -191,6 +194,7 @@ export function useUpdateDevis() {
           prix_unitaire: l.prix_unitaire,
           tva: l.tva,
           montant_ht: line_ht,
+          is_regularisation: formData.is_regularisation || false,
           ordre: i,
         }
       })

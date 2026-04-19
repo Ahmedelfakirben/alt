@@ -100,6 +100,7 @@ export function useCreateBonLivraison() {
                     montant_ttc,
                     notes: formData.notes || null,
                     inclure_tva: formData.inclure_tva,
+                    is_regularisation: formData.is_regularisation || false,
                 })
                 .select()
                 .single()
@@ -117,6 +118,7 @@ export function useCreateBonLivraison() {
                     tva: l.tva,
                     montant_ht: line_ht,
                     codes_articles: l.codes_articles || [],
+                    is_regularisation: formData.is_regularisation || false,
                     ordre: i,
                 }
             })
@@ -181,6 +183,7 @@ export function useUpdateBonLivraison() {
                     montant_ttc,
                     notes: formData.notes || null,
                     inclure_tva: formData.inclure_tva,
+                    is_regularisation: formData.is_regularisation || false,
                 })
                 .eq("id", id)
                 .select()
@@ -200,6 +203,7 @@ export function useUpdateBonLivraison() {
                     prix_unitaire: l.prix_unitaire,
                     tva: l.tva,
                     montant_ht: line_ht,
+                    is_regularisation: formData.is_regularisation || false,
                     ordre: i,
                 }
             })
