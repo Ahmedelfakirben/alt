@@ -12,12 +12,19 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import Link from "next/link"
 import { toast } from "sonner"
 import { LoadingScreen } from "@/components/ui/loading-screen"
+import { useExportToExcel } from "@/hooks/use-export-excel"
 
 const modeLabels: Record<string, string> = { especes: "Espèces", carte: "Carte", cheque: "Chèque", virement: "Virement" }
 
 export default function VentesPosPage() {
     const { data: ventes, isLoading } = useVentePosList()
     const deleteVente = useDeleteVentePos()
+    const { exportToExcel, isExporting } = useExportToExcel()
+
+    const handleExport = (filteredRows: any[]) => {
+        exportToExcel("ventes_pos", `Export_Ventes_${new Date().toLocaleDateString("fr-FR").replace(/\//g, "-")}`, filteredRows)
+    }
+
     const handleDelete = async (id: string) => { try { await deleteVente.mutateAsync(id); toast.success("Vente supprimée") } catch { toast.error("Erreur lors de la suppression") } }
 
     const columns: ColumnDef<VentePos>[] = [
@@ -61,6 +68,8 @@ export default function VentesPosPage() {
                 createUrl="/pos/nouveau" 
                 createLabel="Nouvelle vente"
                 getRowHref={(row) => `/pos/ventes/${row.id}`}
+                onExportExcel={handleExport}
+                exportingExcel={isExporting}
             />
         </div>
     )

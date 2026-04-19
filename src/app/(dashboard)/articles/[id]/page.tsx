@@ -42,41 +42,67 @@ export default function ArticleDetailPage() {
         }
     }
 
-    const historyColumns: ColumnDef<MouvementStock>[] = [
+    const historyColumns: ColumnDef<any>[] = [
         {
             accessorKey: "created_at",
             header: "Date",
             cell: ({ row }) => new Date(row.original.created_at).toLocaleString("fr-FR"),
         },
         {
+            accessorKey: "reference_type",
+            header: "Source",
+            cell: ({ row }) => {
+                const link = getSourceLink(row.original.reference_type, row.original.reference_id)
+                const docNumero = row.original.document_numero || row.original.reference_type.replace(/_/g, " ")
+                if (link) {
+                    return (
+                        <Link href={link} className="text-orange-600 hover:underline font-bold uppercase text-[11px]">
+                            {docNumero}
+                        </Link>
+                    )
+                }
+                return <span className="uppercase font-bold text-[11px]">{docNumero}</span>
+            },
+        },
+        {
+            accessorKey: "document_tiers",
+            header: "Tiers (Client / Fournisseur)",
+            cell: ({ row }) => <span className="font-medium text-xs">{row.original.document_tiers || "—"}</span>,
+        },
+        {
             accessorKey: "type",
             header: "Type",
             cell: ({ row }) => (
-                <Badge variant={row.original.type === "entree" ? "default" : "destructive"}>
+                <span className={row.original.type === "entree" ? "text-[10px] uppercase font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full" : "text-[10px] uppercase font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-full"}>
                     {row.original.type === "entree" ? "Entrée" : "Sortie"}
-                </Badge>
+                </span>
             ),
         },
         {
             accessorKey: "quantite",
             header: "Quantité",
-            cell: ({ row }) => <span className="font-bold">{row.original.quantite} {article.unite}</span>,
+            cell: ({ row }) => (
+                <span className={`font-black ${row.original.type === "entree" ? 'text-green-600' : 'text-red-600'}`}>
+                    {row.original.type === "entree" ? '+' : '-'}{row.original.quantite} {article.unite}
+                </span>
+            ),
         },
         {
-            accessorKey: "reference_type",
-            header: "Source",
+            accessorKey: "document_statut",
+            header: "Statut Pay.",
             cell: ({ row }) => {
-                const link = getSourceLink(row.original.reference_type, row.original.reference_id)
-                const label = row.original.reference_type.replace(/_/g, " ")
-                if (link) {
-                    return (
-                        <Link href={link} className="text-orange-600 hover:underline font-bold capitalize">
-                            {label}
-                        </Link>
-                    )
-                }
-                return <span className="capitalize">{label}</span>
-            },
+                const st = (row.original.document_statut as string) || "—";
+                if (st === "—") return <span className="text-muted-foreground">-</span>
+                return (
+                    <span className={
+                        st === "paye" ? "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-green-100 text-green-700" :
+                        st === "partiel" ? "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-yellow-100 text-yellow-700" :
+                        "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-red-100 text-red-700"
+                    }>
+                        {st}
+                    </span>
+                )
+            }
         },
         {
             accessorKey: "depot.libelle",

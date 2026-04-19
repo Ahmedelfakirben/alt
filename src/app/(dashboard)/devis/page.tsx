@@ -17,6 +17,7 @@ import {
 import Link from "next/link"
 import { toast } from "sonner"
 import { LoadingScreen } from "@/components/ui/loading-screen"
+import { useExportToExcel } from "@/hooks/use-export-excel"
 
 const statutColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     brouillon: "secondary",
@@ -39,6 +40,11 @@ export default function DevisListPage() {
     const deleteDevis = useDeleteDevis()
     const updateStatut = useUpdateDevisStatut()
     const toggleTVA = useToggleDevisTVA()
+    const { exportToExcel, isExporting } = useExportToExcel()
+
+    const handleExport = (filteredRows: any[]) => {
+        exportToExcel("devis", `Export_Devis_${new Date().toLocaleDateString("fr-FR").replace(/\//g, "-")}`, filteredRows)
+    }
 
     const handleDelete = async (id: string) => {
         try {
@@ -176,6 +182,8 @@ export default function DevisListPage() {
                 createUrl="/devis/nouveau" 
                 createLabel="Nouveau devis"
                 getRowHref={(row) => `/devis/${row.id}`}
+                onExportExcel={handleExport}
+                exportingExcel={isExporting}
             />
         </div>
     )

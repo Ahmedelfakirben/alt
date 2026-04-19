@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import Link from "next/link"
 import { toast } from "sonner"
 import { LoadingScreen } from "@/components/ui/loading-screen"
+import { useExportToExcel } from "@/hooks/use-export-excel"
 
 const statutColors: Record<string, "default" | "secondary" | "destructive"> = { brouillon: "secondary", valide: "default", annule: "destructive" }
 const statutLabels: Record<string, string> = { brouillon: "Brouillon", valide: "Validé", annule: "Annulé" }
@@ -21,6 +22,12 @@ export default function BonAchatsPage() {
     const deleteBA = useDeleteBonAchat()
     const updateStatut = useUpdateBonAchatStatut()
     const toggleTVA = useToggleBonAchatTVA()
+    const { exportToExcel, isExporting } = useExportToExcel()
+
+    const handleExport = (filteredRows: any[]) => {
+        exportToExcel("bon_achats", `Export_Bon_Achat_${new Date().toLocaleDateString("fr-FR").replace(/\//g, "-")}`, filteredRows)
+    }
+
     const handleDelete = async (id: string) => { try { await deleteBA.mutateAsync(id); toast.success("Bon d'achat supprimé") } catch { toast.error("Erreur lors de la suppression") } }
     const handleToggleTVA = async (id: string, currentInclureTva: boolean) => {
         try {
@@ -98,6 +105,8 @@ export default function BonAchatsPage() {
                 createUrl="/bon-achats/nouveau" 
                 createLabel="Nouveau BA"
                 getRowHref={(row) => `/bon-achats/${row.id}`}
+                onExportExcel={handleExport}
+                exportingExcel={isExporting}
             />
         </div>
     )

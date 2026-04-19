@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import Link from "next/link"
 import { toast } from "sonner"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useExportToExcel } from "@/hooks/use-export-excel"
 
 const statutColors: Record<string, "default" | "secondary" | "destructive"> = { brouillon: "secondary", valide: "default", annule: "destructive" }
 const statutLabels: Record<string, string> = { brouillon: "Brouillon", valide: "Validé", annule: "Annulé" }
@@ -21,6 +22,12 @@ export default function BonRetourAchatsPage() {
     const deleteBRA = useDeleteBonRetourAchat()
     const updateStatut = useUpdateBonRetourAchatStatut()
     const toggleTVA = useToggleBonRetourAchatTVA()
+    const { exportToExcel, isExporting } = useExportToExcel()
+
+    const handleExport = (filteredRows: any[]) => {
+        exportToExcel("bon_retour_achats", `Export_Bon_Retour_Achat_${new Date().toLocaleDateString("fr-FR").replace(/\//g, "-")}`, filteredRows)
+    }
+
     const handleDelete = async (id: string) => { try { await deleteBRA.mutateAsync(id); toast.success("Bon de retour achat supprimé") } catch { toast.error("Erreur lors de la suppression") } }
     const handleToggleTVA = async (id: string, currentInclureTva: boolean) => {
         try {
@@ -88,6 +95,8 @@ export default function BonRetourAchatsPage() {
                 createUrl="/bon-retour-achats/nouveau" 
                 createLabel="Nouveau BRA"
                 getRowHref={(row) => `/bon-retour-achats/${row.id}`}
+                onExportExcel={handleExport}
+                exportingExcel={isExporting}
             />
         </div>
     )

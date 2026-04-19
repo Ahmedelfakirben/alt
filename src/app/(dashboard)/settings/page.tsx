@@ -103,31 +103,7 @@ export default function SettingsPage() {
                 </CardContent>
             </Card>
 
-            <Separator />
 
-            <Card className={fiscalMode ? "border-primary" : ""}>
-                <CardHeader>
-                    <div className="flex items-center gap-2">
-                        <ReceiptText className={`h-5 w-5 ${fiscalMode ? "text-primary" : ""}`} />
-                        <CardTitle>Configuration Globale d&apos;Affichage</CardTitle>
-                    </div>
-                    <CardDescription>Basculez entre le mode d&apos;affichage global et le mode facturé (TVA).</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/20">
-                        <div className="space-y-0.5">
-                            <Label className="text-base">Mode Fiscal (Facturé uniquement)</Label>
-                            <p className="text-sm text-muted-foreground">
-                                Seuls les documents et les calculs de stock/finances incluant la TVA seront affichés.
-                            </p>
-                        </div>
-                        <Switch 
-                            checked={fiscalMode}
-                            onCheckedChange={toggleFiscalMode}
-                        />
-                    </div>
-                </CardContent>
-            </Card>
 
             <Separator />
             <AdminManagement profileEmail={profile.email} />

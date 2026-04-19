@@ -9,13 +9,15 @@ import { ColumnDef } from "@tanstack/react-table"
 import type { Devis, BonLivraison } from "@/types/database"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Eye, ReceiptText, Globe } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Eye, ReceiptText, Globe, Download } from "lucide-react"
 import Link from "next/link"
 import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useFiscalMode } from "@/providers/fiscal-mode-context"
+import { generateEtatTiersPDF } from "@/lib/pdf-etat-generator"
 
 const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     paye: "default",
@@ -35,24 +37,37 @@ export default function EtatClientPage() {
         setIsMounted(true)
     }, [])
 
+    const [dateDebut, setDateDebut] = useState<string>("")
+    const [dateFin, setDateFin] = useState<string>("")
+
     const { data: clientDevis, isLoading: loadingClientDevis } = useDevisByClient(selectedClientId)
     const { data: clientFactures, isLoading: loadingClientFactures } = useBonLivraisonsByClient(selectedClientId)
     
     const { data: allDevis, isLoading: loadingAllDevis } = useDevisList()
     const { data: allFactures, isLoading: loadingAllFactures } = useBonLivraisonList()
 
-    // FISCAL FILTERING
+    // FILTERING (FISCAL + DATE)
     const filteredDevis = useMemo(() => {
-        const raw = selectedClientId !== "all" ? clientDevis : allDevis
-        if (!fiscalMode) return raw || []
-        return (raw || []).filter(d => d.inclure_tva === true)
-    }, [clientDevis, allDevis, selectedClientId, fiscalMode])
+        let raw = selectedClientId !== "all" ? clientDevis : allDevis
+        if (!raw) return []
+
+        if (fiscalMode) raw = raw.filter(d => d.inclure_tva === true)
+        if (dateDebut) raw = raw.filter(d => d.date >= dateDebut)
+        if (dateFin) raw = raw.filter(d => d.date <= dateFin)
+        
+        return raw
+    }, [clientDevis, allDevis, selectedClientId, fiscalMode, dateDebut, dateFin])
 
     const filteredFactures = useMemo(() => {
-        const raw = selectedClientId !== "all" ? clientFactures : allFactures
-        if (!fiscalMode) return raw || []
-        return (raw || []).filter(f => f.inclure_tva === true)
-    }, [clientFactures, allFactures, selectedClientId, fiscalMode])
+        let raw = selectedClientId !== "all" ? clientFactures : allFactures
+        if (!raw) return []
+
+        if (fiscalMode) raw = raw.filter(f => f.inclure_tva === true)
+        if (dateDebut) raw = raw.filter(f => f.date >= dateDebut)
+        if (dateFin) raw = raw.filter(f => f.date <= dateFin)
+            
+        return raw
+    }, [clientFactures, allFactures, selectedClientId, fiscalMode, dateDebut, dateFin])
 
     const isLoading = loadingClients || (selectedClientId !== "all" ? (loadingClientDevis || loadingClientFactures) : (loadingAllDevis || loadingAllFactures))
 
@@ -122,6 +137,16 @@ export default function EtatClientPage() {
     const totalImpaye = impayes.reduce((acc, curr) => acc + (Number(curr.montant_ttc) - Number(curr.montant_regle || 0)), 0)
     const clientActuel = clients?.find(c => c.id === selectedClientId)
 
+    const handlePrintStatement = () => {
+        if (!clientActuel) return
+        generateEtatTiersPDF(
+            "Relevé de Compte Client",
+            clientActuel,
+            historiqueGlobal, // The already filtered history (fiscal + date)
+            { start: dateDebut, end: dateFin }
+        )
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -141,21 +166,46 @@ export default function EtatClientPage() {
                         </p>
                     </div>
                 </div>
-                <div className="w-full md:w-[300px] flex items-center gap-2">
-                    <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                        <SelectTrigger className={fiscalMode ? "border-amber-500/50" : ""}>
-                            <SelectValue placeholder="Tous les clients" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Tous les clients</SelectItem>
-                            {clients?.map(c => (
-                                <SelectItem key={c.id} value={c.id}>{c.code} - {c.raison_sociale}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    {selectedClientId !== "all" && (
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedClientId("all")}>Effacer</Button>
-                    )}
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-2 mr-2">
+                        <Input 
+                            type="date" 
+                            value={dateDebut} 
+                            onChange={(e) => setDateDebut(e.target.value)} 
+                            className="w-[140px] text-xs h-9"
+                        />
+                        <span className="text-muted-foreground text-xs">à</span>
+                        <Input 
+                            type="date" 
+                            value={dateFin} 
+                            onChange={(e) => setDateFin(e.target.value)} 
+                            className="w-[140px] text-xs h-9"
+                        />
+                    </div>
+                    <div className="w-full md:w-[250px] flex items-center gap-2">
+                        <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                            <SelectTrigger className={fiscalMode ? "border-amber-500/50 h-9" : "h-9"}>
+                                <SelectValue placeholder="Tous les clients" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Tous les clients</SelectItem>
+                                {clients?.map(c => (
+                                    <SelectItem key={c.id} value={c.id}>{c.code} - {c.raison_sociale}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {selectedClientId !== "all" && (
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-9 w-9 p-0"
+                                title="Imprimer Relevé"
+                                onClick={handlePrintStatement}
+                            >
+                                <Download className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
 

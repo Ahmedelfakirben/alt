@@ -9,13 +9,15 @@ import { ColumnDef } from "@tanstack/react-table"
 import type { BonCommande, BonAchat } from "@/types/database"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Eye, ReceiptText, Globe } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Eye, ReceiptText, Globe, Download } from "lucide-react"
 import Link from "next/link"
 import { LoadingScreen } from "@/components/ui/loading-screen"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useFiscalMode } from "@/providers/fiscal-mode-context"
+import { generateEtatTiersPDF } from "@/lib/pdf-etat-generator"
 
 const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     paye: "default",
@@ -31,6 +33,9 @@ export default function EtatFournisseurPage() {
     const [isMounted, setIsMounted] = useState(false)
     const { fiscalMode } = useFiscalMode()
 
+    const [dateDebut, setDateDebut] = useState<string>("")
+    const [dateFin, setDateFin] = useState<string>("")
+
     useEffect(() => {
         setIsMounted(true)
     }, [])
@@ -41,18 +46,28 @@ export default function EtatFournisseurPage() {
     const { data: allCommandes, isLoading: loadingAllCommandes } = useBonCommandeList()
     const { data: allAchats, isLoading: loadingAllAchats } = useBonAchatList()
 
-    // FISCAL FILTERING
+    // FILTERING (FISCAL + DATE)
     const filteredCommandes = useMemo(() => {
-        const raw = selectedFournisseurId !== "all" ? clientCommandes : allCommandes
-        if (!fiscalMode) return raw || []
-        return (raw || []).filter(c => c.inclure_tva === true)
-    }, [clientCommandes, allCommandes, selectedFournisseurId, fiscalMode])
+        let raw = selectedFournisseurId !== "all" ? clientCommandes : allCommandes
+        if (!raw) return []
+
+        if (fiscalMode) raw = raw.filter(c => c.inclure_tva === true)
+        if (dateDebut) raw = raw.filter(c => c.date >= dateDebut)
+        if (dateFin) raw = raw.filter(c => c.date <= dateFin)
+        
+        return raw
+    }, [clientCommandes, allCommandes, selectedFournisseurId, fiscalMode, dateDebut, dateFin])
 
     const filteredAchats = useMemo(() => {
-        const raw = selectedFournisseurId !== "all" ? clientAchats : allAchats
-        if (!fiscalMode) return raw || []
-        return (raw || []).filter(a => a.inclure_tva === true)
-    }, [clientAchats, allAchats, selectedFournisseurId, fiscalMode])
+        let raw = selectedFournisseurId !== "all" ? clientAchats : allAchats
+        if (!raw) return []
+
+        if (fiscalMode) raw = raw.filter(a => a.inclure_tva === true)
+        if (dateDebut) raw = raw.filter(a => a.date >= dateDebut)
+        if (dateFin) raw = raw.filter(a => a.date <= dateFin)
+            
+        return raw
+    }, [clientAchats, allAchats, selectedFournisseurId, fiscalMode, dateDebut, dateFin])
 
     const isLoading = loadingFournisseurs || (selectedFournisseurId !== "all" ? (loadingClientCommandes || loadingClientAchats) : (loadingAllCommandes || loadingAllAchats))
 
@@ -122,6 +137,16 @@ export default function EtatFournisseurPage() {
     const totalImpaye = impayes.reduce((acc, curr) => acc + (Number(curr.montant_ttc) - Number(curr.montant_regle || 0)), 0)
     const fournisseurActuel = fournisseurs?.find(f => f.id === selectedFournisseurId)
 
+    const handlePrintStatement = () => {
+        if (!fournisseurActuel) return
+        generateEtatTiersPDF(
+            "Relevé de Compte Fournisseur",
+            fournisseurActuel,
+            historiqueGlobal, // The already filtered history (fiscal + date)
+            { start: dateDebut, end: dateFin }
+        )
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -141,21 +166,46 @@ export default function EtatFournisseurPage() {
                         </p>
                     </div>
                 </div>
-                <div className="w-full md:w-[300px] flex items-center gap-2">
-                    <Select value={selectedFournisseurId} onValueChange={setSelectedFournisseurId}>
-                        <SelectTrigger className={fiscalMode ? "border-amber-500/50" : ""}>
-                            <SelectValue placeholder="Tous los proveedores" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Tous les fournisseurs</SelectItem>
-                            {fournisseurs?.map(f => (
-                                <SelectItem key={f.id} value={f.id}>{f.code} - {f.raison_sociale}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    {selectedFournisseurId !== "all" && (
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedFournisseurId("all")}>Effacer</Button>
-                    )}
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-2 mr-2">
+                        <Input 
+                            type="date" 
+                            value={dateDebut} 
+                            onChange={(e) => setDateDebut(e.target.value)} 
+                            className="w-[140px] text-xs h-9"
+                        />
+                        <span className="text-muted-foreground text-xs">à</span>
+                        <Input 
+                            type="date" 
+                            value={dateFin} 
+                            onChange={(e) => setDateFin(e.target.value)} 
+                            className="w-[140px] text-xs h-9"
+                        />
+                    </div>
+                    <div className="w-full md:w-[250px] flex items-center gap-2">
+                        <Select value={selectedFournisseurId} onValueChange={setSelectedFournisseurId}>
+                            <SelectTrigger className={fiscalMode ? "border-amber-500/50 h-9" : "h-9"}>
+                                <SelectValue placeholder="Tous los proveedores" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Tous les fournisseurs</SelectItem>
+                                {fournisseurs?.map(f => (
+                                    <SelectItem key={f.id} value={f.id}>{f.code} - {f.raison_sociale}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {selectedFournisseurId !== "all" && (
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-9 w-9 p-0"
+                                title="Imprimer Relevé"
+                                onClick={handlePrintStatement}
+                            >
+                                <Download className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
 

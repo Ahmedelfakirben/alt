@@ -17,6 +17,7 @@ import {
 import Link from "next/link"
 import { toast } from "sonner"
 import { LoadingScreen } from "@/components/ui/loading-screen"
+import { useExportToExcel } from "@/hooks/use-export-excel"
 
 const statutColors: Record<string, "default" | "secondary" | "destructive"> = { brouillon: "secondary", valide: "default", annule: "destructive" }
 const statutLabels: Record<string, string> = { brouillon: "Brouillon", valide: "Validé", annule: "Annulé" }
@@ -26,6 +27,11 @@ export default function BonRetoursPage() {
     const deleteBR = useDeleteBonRetour()
     const updateStatut = useUpdateBonRetourStatut()
     const toggleTVA = useToggleBonRetourTVA()
+    const { exportToExcel, isExporting } = useExportToExcel()
+
+    const handleExport = (filteredRows: any[]) => {
+        exportToExcel("bon_retours", `Export_Bon_Retour_${new Date().toLocaleDateString("fr-FR").replace(/\//g, "-")}`, filteredRows)
+    }
 
     const handleDelete = async (id: string) => {
         try { await deleteBR.mutateAsync(id); toast.success("Bon de retour supprimé") } catch { toast.error("Erreur lors de la suppression") }
@@ -108,6 +114,8 @@ export default function BonRetoursPage() {
                 createUrl="/bon-retours/nouveau" 
                 createLabel="Nouveau BR"
                 getRowHref={(row) => `/bon-retours/${row.id}`}
+                onExportExcel={handleExport}
+                exportingExcel={isExporting}
             />
         </div>
     )

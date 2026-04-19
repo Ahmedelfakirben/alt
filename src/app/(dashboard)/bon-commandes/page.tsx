@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import Link from "next/link"
 import { toast } from "sonner"
 import { LoadingScreen } from "@/components/ui/loading-screen"
+import { useExportToExcel } from "@/hooks/use-export-excel"
 
 const statutColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = { brouillon: "secondary", envoye: "outline", recu: "default", annule: "destructive" }
 const statutLabels: Record<string, string> = { brouillon: "Brouillon", envoye: "Envoyé", recu: "Reçu", annule: "Annulé" }
@@ -21,6 +22,11 @@ export default function BonCommandesPage() {
     const deleteBC = useDeleteBonCommande()
     const updateStatut = useUpdateBonCommandeStatut()
     const toggleTVA = useToggleBonCommandeTVA()
+    const { exportToExcel, isExporting } = useExportToExcel()
+
+    const handleExport = (filteredRows: any[]) => {
+        exportToExcel("bon_commandes", `Export_Bon_Commande_${new Date().toLocaleDateString("fr-FR").replace(/\//g, "-")}`, filteredRows)
+    }
 
     const handleDelete = async (id: string) => { try { await deleteBC.mutateAsync(id); toast.success("Bon de commande supprimé") } catch { toast.error("Erreur lors de la suppression") } }
     const handleToggleTVA = async (id: string, currentInclureTva: boolean) => {
@@ -95,6 +101,8 @@ export default function BonCommandesPage() {
                 createUrl="/bon-commandes/nouveau" 
                 createLabel="Nouveau BC"
                 getRowHref={(row) => `/bon-commandes/${row.id}`}
+                onExportExcel={handleExport}
+                exportingExcel={isExporting}
             />
         </div>
     )

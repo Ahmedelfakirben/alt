@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ChevronLeft, ChevronRight, Search, Plus, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { ChevronLeft, ChevronRight, Search, Plus, ArrowUpDown, ArrowUp, ArrowDown, FileSpreadsheet, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -36,6 +36,8 @@ interface DataTableProps<TData, TValue> {
   globalFilter?: string // Controlled state
   onGlobalFilterChange?: (value: string) => void // Controlled updater
   getRowHref?: (data: TData) => string
+  onExportExcel?: (filteredData: TData[]) => void
+  exportingExcel?: boolean
 }
 
 export function DataTable<TData, TValue>({
@@ -48,7 +50,13 @@ export function DataTable<TData, TValue>({
   globalFilter: externalGlobalFilter,
   onGlobalFilterChange: setExternalGlobalFilter,
   getRowHref,
+  onExportExcel,
+  exportingExcel = false,
 }: DataTableProps<TData, TValue>) {
+//...
+// To avoid big replacements, we'll run two replacements.
+
+// First replacement: update prop signature.
   const router = useRouter()
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -103,14 +111,22 @@ export function DataTable<TData, TValue>({
             className="pl-9"
           />
         </div>
-        {createUrl && (
-          <Button asChild>
-            <Link href={createUrl}>
-              <Plus className="mr-2 h-4 w-4" />
-              {createLabel}
-            </Link>
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {onExportExcel && (
+            <Button variant="outline" onClick={() => onExportExcel(table.getFilteredRowModel().rows.map(r => r.original))} disabled={exportingExcel} className="text-green-700 bg-green-50 hover:bg-green-100 hover:text-green-800 border-green-200">
+              {exportingExcel ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
+              Exporter Excel
+            </Button>
+          )}
+          {createUrl && (
+            <Button asChild>
+              <Link href={createUrl}>
+                <Plus className="mr-2 h-4 w-4" />
+                {createLabel}
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="rounded-md border">
