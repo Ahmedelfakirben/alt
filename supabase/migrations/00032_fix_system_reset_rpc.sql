@@ -1,16 +1,12 @@
 -- ============================================================
 -- RPC: Reset Database
--- Allows two modes: 'transactions' (keeps products/clients) or 'full' (purges catalogs too, except users/treasury/depots)
+-- Fix: Add WHERE clauses to bypass safe_update restrictions
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION rpc_reset_database(p_mode TEXT)
 RETURNS void AS $$
 BEGIN
-    -- Disable triggers temporarily if needed, though TRUNCATE handles it well usually.
-    
     IF p_mode = 'full' THEN
-        -- TRUNCATE CASCADE will automatically delete all lines (bon_livraison_lignes, etc.)
-        -- and stock logic. Also deletes operations because of references, but we explicitly list them.
         TRUNCATE TABLE 
             clients, 
             fournisseurs, 
@@ -56,7 +52,7 @@ BEGIN
     UPDATE tresoreries SET solde = 0, solde_fiscale = 0 WHERE id IS NOT NULL;
     
     -- Reset numbering sequences
-    UPDATE sequences SET dernier_numero = 0 WHERE id IS NOT NULL;
+    UPDATE sequences SET dernier_numero = 0 WHERE type IS NOT NULL; -- Use type as it is NOT NULL
 
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
