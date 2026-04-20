@@ -107,14 +107,199 @@ export default function SettingsPage() {
 
             <Separator />
             <AdminManagement profileEmail={profile.email} />
+            <Separator />
+            <DataManagement />
         </div>
     )
 }
 
 import { getAdminUsers, createAdminUser, deleteAdminUser } from "@/app/actions/users"
-import { Trash2, ShieldAlert, Plus, RefreshCw } from "lucide-react"
+import { Trash2, ShieldAlert, Plus, RefreshCw, Download, Upload, AlertOctagon } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+
+function DataManagement() {
+    const [loadingAction, setLoadingAction] = useState(false)
+
+    // Export logic
+    const handleExport = async () => {
+        setLoadingAction(true)
+        try {
+            toast.loading("Génération de la sauvegarde...", { id: "backup" })
+            const res = await fetch("/api/backup")
+            if (!res.ok) throw new Error("Erreur de sauvegarde")
+            const data = await res.json()
+            
+            // Download as file
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = `backup_ish_erp_${new Date().toLocaleDateString("fr-FR").replace(/\//g, "-")}.json`
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
+            
+            toast.success("Sauvegarde téléchargée avec succès", { id: "backup" })
+        } catch (e: any) {
+            toast.error(e.message || "Erreur lors de l'exportation", { id: "backup" })
+        }
+        setLoadingAction(false)
+    }
+
+    // Import logic
+    const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        
+        if (!confirm("ATTENTION : Cette action va ÉCRASER toutes les données actuelles. Confirmez-vous ?")) {
+            e.target.value = ""
+            return
+        }
+
+        setLoadingAction(true)
+        toast.loading("Restauration en cours... Veuillez patienter", { id: "restore" })
+
+        try {
+            const reader = new FileReader()
+            reader.onload = async (event) => {
+                try {
+                    const json = JSON.parse(event.target?.result as string)
+                    
+                    const res = await fetch("/api/backup", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(json)
+                    })
+
+                    if (!res.ok) throw new Error("Erreur serveur lors de la restauration")
+                    toast.success("Données restaurées. Veuillez rafraîchir la page.", { id: "restore" })
+                    setTimeout(() => window.location.reload(), 2000)
+                } catch (err: any) {
+                    toast.error(err.message || "Fichier invalide", { id: "restore" })
+                }
+            }
+            reader.readAsText(file)
+        } catch (error) {
+            toast.error("Erreur lors de la lecture du fichier", { id: "restore" })
+        }
+        setLoadingAction(false)
+    }
+
+    // Reset logic
+    const handleReset = async (mode: 'transactions' | 'full') => {
+        const confirmationWord = mode === 'full' ? 'PURGER TOUT' : 'PURGER'
+        const input = prompt(`ATTENTION DANGER EXTRÊME :\n\nTapez "${confirmationWord}" pour confirmer la suppression définitive.`);
+        
+        if (input !== confirmationWord) {
+            toast.info("Opération annulée.")
+            return
+        }
+
+        setLoadingAction(true)
+        toast.loading("Suppression des données...", { id: "reset" })
+        
+        try {
+            const supabase = createClient()
+            const { error } = await (supabase.rpc as any)("rpc_reset_database", { p_mode: mode })
+            
+            if (error) throw error
+            
+            toast.success("Système réinitialisé avec succès.", { id: "reset" })
+            setTimeout(() => window.location.reload(), 2000)
+        } catch (e: any) {
+            toast.error("Échec de la réinitialisation", { id: "reset" })
+            console.error(e)
+        }
+        setLoadingAction(false)
+    }
+
+    return (
+        <Card className="border-red-500/30">
+            <CardHeader>
+                <div className="flex items-center gap-2">
+                    <AlertOctagon className="h-6 w-6 text-red-600" />
+                    <CardTitle className="text-red-600">Zone de Danger & Sauvegarde</CardTitle>
+                </div>
+                <CardDescription>
+                    Effectuez des copies de sécurité complètes ou purgez le système. Manipuler avec une extrême précaution.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-muted/50 rounded-lg">
+                    <div className="space-y-2">
+                        <Label className="text-base font-semibold">Sauvegarder les données</Label>
+                        <p className="text-sm text-muted-foreground mb-4">
+                            Téléchargez un fichier JSON contenant l'intégralité de la base de données.
+                        </p>
+                        <Button 
+                            className="w-full flex gap-2" 
+                            onClick={handleExport} 
+                            disabled={loadingAction}
+                        >
+                            <Download className="h-4 w-4" /> Exporter le système (JSON)
+                        </Button>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-base font-semibold">Restaurer les données</Label>
+                        <p className="text-sm text-muted-foreground mb-4">
+                            Importez un fichier de sauvegarde. Remplace définitivement les données actuelles.
+                        </p>
+                        <div className="relative">
+                            <Input 
+                                type="file" 
+                                accept=".json"
+                                className="absolute inset-0 opacity-0 cursor-pointer w-full"
+                                onChange={handleImport}
+                                disabled={loadingAction}
+                            />
+                            <Button 
+                                variant="outline" 
+                                className="w-full flex gap-2 pointer-events-none"
+                            >
+                                <Upload className="h-4 w-4" /> Importer une sauvegarde
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4">
+                    <Label className="text-base font-semibold text-red-600">Purge du système</Label>
+                    
+                    <div className="flex flex-col gap-4 items-start">
+                        <div className="flex items-center justify-between w-full border border-red-200 p-4 rounded-lg">
+                            <div>
+                                <h4 className="font-semibold text-sm">Opérationnelle (Reset Partiel)</h4>
+                                <p className="text-sm text-muted-foreground max-w-md">
+                                    Supprime uniquement l'historique (Factures, BL, Devis, Paiements, etc.) et remet le stock à zéro. Vos clients, articles et employés sont <strong>conservés</strong>.
+                                </p>
+                            </div>
+                            <Button variant="destructive" disabled={loadingAction} onClick={() => handleReset('transactions')}>
+                                Purgation Partielle
+                            </Button>
+                        </div>
+
+                        <div className="flex items-center justify-between w-full border border-red-500/50 bg-red-50/50 dark:bg-red-950/20 p-4 rounded-lg">
+                            <div>
+                                <h4 className="font-semibold text-sm text-red-600">Totale & Définitive (Reset Total)</h4>
+                                <p className="text-sm text-red-600/80 max-w-md">
+                                    Supprime <strong>tout</strong>. Factures, Clients, Articles, Fournisseurs. Remet l'application à l'état vierge usine. Seuls les comptes utilisateurs restent existants.
+                                </p>
+                            </div>
+                            <Button variant="destructive" disabled={loadingAction} onClick={() => handleReset('full')}>
+                                Purgation Totale
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
 
 function AdminManagement({ profileEmail }: { profileEmail: string }) {
     const [users, setUsers] = useState<any[]>([])
