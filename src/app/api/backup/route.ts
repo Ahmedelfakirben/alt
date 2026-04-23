@@ -31,7 +31,11 @@ const BACKUP_TABLES = [
     "paiements",
     "depenses",
     "mouvements_tresorerie",
-    "mouvements_stock"
+    "mouvements_stock",
+    "plan_comptable",
+    "journaux",
+    "ecritures_comptables",
+    "lignes_ecriture"
 ];
 
 export async function GET() {
