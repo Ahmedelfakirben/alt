@@ -88,6 +88,7 @@ export function DocumentLines({
   const [quickScanCode, setQuickScanCode] = React.useState("")
   const [isScanning, setIsScanning] = React.useState(false)
   const [isScannerOpen, setIsScannerOpen] = React.useState(false)
+  const [scanningRowIndex, setScanningRowIndex] = React.useState<number | null>(null)
   const quickScanRef = React.useRef<HTMLInputElement>(null)
 
   const supabase = createClient()
@@ -394,7 +395,7 @@ export function DocumentLines({
                                 size="icon"
                                 className="h-10 w-10 shrink-0 border-2 border-orange-500/20 text-orange-600 hover:bg-orange-500 hover:text-white transition-all hidden md:flex"
                                 onClick={() => {
-                                    setActiveTraceability(index) // Use same modal but with scan-and-resolve logic
+                                    setScanningRowIndex(index)
                                     setIsScannerOpen(true)
                                 }}
                             >
@@ -581,9 +582,26 @@ export function DocumentLines({
 
       {isScannerOpen && (
         <BarcodeScanner 
-            onScan={(code) => handleQuickScan(code)}
-            onClose={() => setIsScannerOpen(false)}
-            title="Escaneo de Producto"
+            onScan={async (code) => {
+                if (scanningRowIndex !== null) {
+                    const { data } = await supabase.rpc("find_article_by_code", { p_search_code: code } as any)
+                    const result = (Array.isArray(data) ? data[0] : data) as any
+                    if (result) {
+                        handleArticleSelect(scanningRowIndex, result.article_id)
+                        toast.success(`Cargado: ${result.designation}`)
+                    } else {
+                        toast.error("Código no encontrado")
+                    }
+                } else {
+                    handleQuickScan(code)
+                }
+                setScanningRowIndex(null)
+            }}
+            onClose={() => {
+                setIsScannerOpen(false)
+                setScanningRowIndex(null)
+            }}
+            title={scanningRowIndex !== null ? "Escanear para esta línea" : "Escaneo de Producto"}
         />
       )}
     </div>
