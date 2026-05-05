@@ -393,7 +393,7 @@ export function DocumentLines({
                                 type="button"
                                 variant="outline"
                                 size="icon"
-                                className="h-10 w-10 shrink-0 border-2 border-orange-500/20 text-orange-600 hover:bg-orange-500 hover:text-white transition-all hidden md:flex"
+                                className="h-10 w-10 shrink-0 border-2 border-orange-500/20 text-orange-600 hover:bg-orange-500 hover:text-white transition-all flex"
                                 onClick={() => {
                                     setScanningRowIndex(index)
                                     setIsScannerOpen(true)

@@ -101,7 +101,7 @@ export function CodesEntryModal({ isOpen, onClose, onSave, initialCodes, quantit
 
                 <div className="p-0 flex-1 overflow-hidden flex flex-col md:flex-row">
                     {/* Left: Progress & Quick Scan */}
-                    <div className="hidden md:flex w-48 flex-col border-r bg-muted/10 p-4 gap-4">
+                    <div className="flex w-full md:w-48 flex-col border-b md:border-b-0 md:border-r bg-muted/10 p-4 gap-4">
                         <Button 
                             className="w-full bg-orange-500 hover:bg-orange-600 h-24 flex-col gap-2 shadow-lg shadow-orange-500/20 rounded-xl"
                             onClick={() => setIsScannerOpen(true)}
