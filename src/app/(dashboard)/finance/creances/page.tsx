@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useFiscalMode } from "@/providers/fiscal-mode-context"
 import { generateEtatTiersPDF } from "@/lib/pdf-etat-generator"
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns"
 
 const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     paye: "default",
@@ -73,7 +74,15 @@ export default function EtatClientPage() {
 
     const devisColumns: ColumnDef<Devis>[] = [
         { accessorKey: "date", header: "Date", cell: ({ row }) => new Date(row.original.date).toLocaleDateString("fr-FR") },
-        { accessorKey: "numero", header: "N° Devis" },
+        { 
+            accessorKey: "numero", 
+            header: "N° Devis",
+            cell: ({ row }) => (
+                <Link href={`/devis/${row.original.id}`} className="font-mono text-xs font-bold text-orange-600 hover:underline">
+                    {row.original.numero}
+                </Link>
+            )
+        },
         { 
             accessorKey: "client.raison_sociale", 
             header: "Client", 
@@ -96,7 +105,15 @@ export default function EtatClientPage() {
 
     const facturesColumns: ColumnDef<BonLivraison>[] = [
         { accessorKey: "date", header: "Date", cell: ({ row }) => new Date(row.original.date).toLocaleDateString("fr-FR") },
-        { accessorKey: "numero", header: "N° Facture/BL" },
+        { 
+            accessorKey: "numero", 
+            header: "N° Facture/BL",
+            cell: ({ row }) => (
+                <Link href={`/bon-livraisons/${row.original.id}`} className="font-mono text-xs font-bold text-orange-600 hover:underline">
+                    {row.original.numero}
+                </Link>
+            )
+        },
         { 
             accessorKey: "client.raison_sociale", 
             header: "Client", 
@@ -167,6 +184,32 @@ export default function EtatClientPage() {
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                    <Select onValueChange={(val) => {
+                        const now = new Date()
+                        if (val === "today") {
+                            const d = format(now, "yyyy-MM-dd")
+                            setDateDebut(d); setDateFin(d)
+                        } else if (val === "week") {
+                            setDateDebut(format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"))
+                            setDateFin(format(endOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"))
+                        } else if (val === "month") {
+                            setDateDebut(format(startOfMonth(now), "yyyy-MM-dd"))
+                            setDateFin(format(endOfMonth(now), "yyyy-MM-dd"))
+                        } else if (val === "year") {
+                            setDateDebut(format(new Date(now.getFullYear(), 0, 1), "yyyy-MM-dd"))
+                            setDateFin(format(new Date(now.getFullYear(), 11, 31), "yyyy-MM-dd"))
+                        }
+                    }}>
+                        <SelectTrigger className="w-[120px] h-9 text-xs">
+                            <SelectValue placeholder="Période" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="today">Aujourd'hui</SelectItem>
+                            <SelectItem value="week">Cette Semaine</SelectItem>
+                            <SelectItem value="month">Ce Mois</SelectItem>
+                            <SelectItem value="year">Cette Année</SelectItem>
+                        </SelectContent>
+                    </Select>
                     <div className="flex items-center gap-2 mr-2">
                         <Input 
                             type="date" 

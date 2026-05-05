@@ -24,6 +24,7 @@ import { fr } from "date-fns/locale"
 import { generateEtatGeneralPDF } from "@/lib/pdf-etat-generator"
 import { cn } from "@/lib/utils"
 import { useFiscalMode } from "@/providers/fiscal-mode-context"
+import Link from "next/link"
 
 export default function EtatGeneralPage() {
     const { fiscalMode } = useFiscalMode()
@@ -56,6 +57,15 @@ export default function EtatGeneralPage() {
                 start: format(start, "yyyy-MM-dd"), 
                 end: format(end, "yyyy-MM-dd"),
                 label: format(date, "MMMM yyyy", { locale: fr })
+            }
+        }
+        if (activeTab === "annuel") {
+            const start = new Date(date.getFullYear(), 0, 1)
+            const end = new Date(date.getFullYear(), 11, 31)
+            return {
+                start: format(start, "yyyy-MM-dd"),
+                end: format(end, "yyyy-MM-dd"),
+                label: `Année ${date.getFullYear()}`
             }
         }
         return { start: "", end: "", label: "" }
@@ -91,6 +101,20 @@ export default function EtatGeneralPage() {
         }
     }, [operations])
 
+    const getSourceLink = (type: string, id: string) => {
+        if (!id || id === 'regularisation' || id === 'ajustement_manuel' || id === 'stock_initial') return null
+        switch (type) {
+            case "bon_livraison": return `/bon-livraisons/${id}`
+            case "bon_achat": return `/bon-achats/${id}`
+            case "bon_retour": return `/bon-retours/${id}`
+            case "bon_retour_achat": return `/bon-retour-achats/${id}`
+            case "vente_pos": return `/pos/ventes/${id}`
+            case "devis": return `/devis/${id}`
+            case "bon_commande": return `/bon-commandes/${id}`
+            default: return null
+        }
+    }
+
     const columns: ColumnDef<Operation>[] = [
         {
             accessorKey: "date",
@@ -100,7 +124,13 @@ export default function EtatGeneralPage() {
         {
             accessorKey: "numero",
             header: "Référence",
-            cell: ({ row }) => <span className="font-mono text-xs font-bold text-orange-600">{row.original.numero || '-'}</span>
+            cell: ({ row }) => {
+                const link = getSourceLink(row.original.reference_type, row.original.reference_id)
+                const content = <span className="font-mono text-xs font-bold text-orange-600 hover:underline">{row.original.numero || '-'}</span>
+                
+                if (link) return <Link href={link}>{content}</Link>
+                return content
+            }
         },
         {
             accessorKey: "type",
@@ -192,7 +222,8 @@ export default function EtatGeneralPage() {
         const titles = {
             journalier: "ÉTAT JOURNALIER DES OPÉRATIONS",
             hebdomadaire: "ÉTAT HEBDOMADAIRE DES OPÉRATIONS",
-            mensuel: "ÉTAT MENSUEL DES OPÉRATIONS"
+            mensuel: "ÉTAT MENSUEL DES OPÉRATIONS",
+            annuel: "ÉTAT ANNUEL DES OPÉRATIONS"
         }
         generateEtatGeneralPDF(
             titles[activeTab as keyof typeof titles],
@@ -309,6 +340,12 @@ export default function EtatGeneralPage() {
                         )}>
                             Mensuel
                         </TabsTrigger>
+                        <TabsTrigger value="annuel" className={cn(
+                            "font-bold px-6",
+                            fiscalMode ? "data-[state=active]:bg-amber-600 data-[state=active]:text-white" : "data-[state=active]:bg-orange-600 data-[state=active]:text-white"
+                        )}>
+                            Annuel
+                        </TabsTrigger>
                     </TabsList>
                     
                     <div className={cn(
@@ -353,6 +390,19 @@ export default function EtatGeneralPage() {
                     <Card className={cn("shadow-sm", fiscalMode ? "border-amber-200" : "border-orange-100")}>
                         <CardHeader className="border-b bg-muted/20">
                             <CardTitle className="text-sm">Rapport mensuel détaillé</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-6">
+                            {isLoading ? <div className="h-40 flex items-center justify-center"><LoadingScreen /></div> : (
+                                <DataTable columns={columns} data={operations || []} searchPlaceholder="Rechercher..." />
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="annuel">
+                    <Card className={cn("shadow-sm", fiscalMode ? "border-amber-200" : "border-orange-100")}>
+                        <CardHeader className="border-b bg-muted/20">
+                            <CardTitle className="text-sm">Rapport annuel global</CardTitle>
                         </CardHeader>
                         <CardContent className="pt-6">
                             {isLoading ? <div className="h-40 flex items-center justify-center"><LoadingScreen /></div> : (
