@@ -17,14 +17,14 @@ export const metadata: Metadata = {
   title: "Digital ALT - ERP",
   description: "Système de gestion commerciale Digital ALT",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Digital ALT",
+  },
   icons: {
-    icon: [
-      { url: '/logo.jpeg' },
-      new URL('/logo.jpeg', 'http://localhost')
-    ],
-    apple: [
-      { url: '/logo.jpeg' }
-    ]
+    icon: "/logo.jpeg",
+    apple: "/logo.jpeg",
   },
 }
 
