@@ -1,23 +1,24 @@
 "use client"
 
 import { useParams } from "next/navigation"
-import { useArticle } from "@/hooks/use-articles"
+import { useArticle, useArticlePurchaseHistory } from "@/hooks/use-articles"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Pencil } from "lucide-react"
+import { Pencil, History, ShoppingCart } from "lucide-react"
 import Link from "next/link"
 import { useHistoriqueArticle } from "@/hooks/use-mouvements-stock"
 import { DataTable } from "@/components/data-table/data-table"
 import { ColumnDef } from "@tanstack/react-table"
-import type { MouvementStock } from "@/types/database"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function ArticleDetailPage() {
     const params = useParams()
     const id = params.id as string
     const { data: article, isLoading } = useArticle(id)
     const { data: historique, isLoading: isHistoryLoading } = useHistoriqueArticle(id)
+    const { data: purchaseHistory, isLoading: isPurchaseHistoryLoading } = useArticlePurchaseHistory(id)
 
     if (isLoading) {
         return (
@@ -111,6 +112,43 @@ export default function ArticleDetailPage() {
         },
     ]
 
+    const purchaseHistoryColumns: ColumnDef<any>[] = [
+        {
+            accessorKey: "fecha",
+            header: "Fecha",
+            cell: ({ row }) => new Date(row.original.fecha).toLocaleDateString("fr-FR"),
+        },
+        {
+            accessorKey: "proveedor",
+            header: "Fournisseur",
+            cell: ({ row }) => <span className="font-semibold">{row.original.proveedor}</span>,
+        },
+        {
+            accessorKey: "documento",
+            header: "Document",
+            cell: ({ row }) => (
+                <Link href={`/bon-achats/${row.original.documento}`} className="text-orange-600 hover:underline font-bold text-[11px]">
+                    {row.original.documento}
+                </Link>
+            ),
+        },
+        {
+            accessorKey: "precio_compra",
+            header: "Prix d'achat",
+            cell: ({ row }) => (
+                <span className="font-bold text-lg text-primary">
+                    {Number(row.original.precio_compra).toFixed(2)} DH
+                    {row.original.inclure_tva && <span className="ml-1 text-[10px] font-normal text-muted-foreground">TTC</span>}
+                </span>
+            ),
+        },
+        {
+            accessorKey: "quantite",
+            header: "Qté achetée",
+            cell: ({ row }) => <span>{row.original.quantite} {article.unite}</span>,
+        },
+    ]
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -151,14 +189,14 @@ export default function ArticleDetailPage() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="border-primary/50 bg-primary/5">
                     <CardHeader>
-                        <CardTitle>Tarification</CardTitle>
+                        <CardTitle>Tarification Actuelle</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
                         <div>
-                            <span className="text-sm text-muted-foreground">Prix d&apos;achat</span>
-                            <p className="text-lg font-semibold">{Number(article.prix_achat).toFixed(2)} DH</p>
+                            <span className="text-sm text-muted-foreground">Dernier prix d&apos;achat</span>
+                            <p className="text-2xl font-black text-primary">{Number(article.prix_achat).toFixed(2)} DH</p>
                         </div>
                         <div>
                             <span className="text-sm text-muted-foreground">Prix de vente</span>
@@ -188,20 +226,50 @@ export default function ArticleDetailPage() {
             </div>
 
             <div className="mt-8">
-                <h3 className="text-xl font-bold mb-4">Historique de l&apos;article</h3>
-                <Card>
-                    <CardContent className="p-0">
-                        {isHistoryLoading ? (
-                            <div className="p-4"><Skeleton className="h-32 w-full" /></div>
-                        ) : (
-                            <DataTable 
-                                columns={historyColumns} 
-                                data={historique || []} 
-                                searchPlaceholder="Filtrer l'historique..."
-                            />
-                        )}
-                    </CardContent>
-                </Card>
+                <Tabs defaultValue="stock" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 mb-4">
+                        <TabsTrigger value="stock" className="flex items-center gap-2">
+                            <History className="h-4 w-4" />
+                            Historique des Mouvements
+                        </TabsTrigger>
+                        <TabsTrigger value="purchases" className="flex items-center gap-2">
+                            <ShoppingCart className="h-4 w-4" />
+                            Historial de Compras
+                        </TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="stock">
+                        <Card>
+                            <CardContent className="p-0">
+                                {isHistoryLoading ? (
+                                    <div className="p-4"><Skeleton className="h-32 w-full" /></div>
+                                ) : (
+                                    <DataTable 
+                                        columns={historyColumns} 
+                                        data={historique || []} 
+                                        searchPlaceholder="Filtrer l'historique..."
+                                    />
+                                )}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                    
+                    <TabsContent value="purchases">
+                        <Card>
+                            <CardContent className="p-0">
+                                {isPurchaseHistoryLoading ? (
+                                    <div className="p-4"><Skeleton className="h-32 w-full" /></div>
+                                ) : (
+                                    <DataTable 
+                                        columns={purchaseHistoryColumns} 
+                                        data={purchaseHistory || []} 
+                                        searchPlaceholder="Filtrer par fournisseur..."
+                                    />
+                                )}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                </Tabs>
             </div>
         </div>
     )

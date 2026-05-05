@@ -49,6 +49,8 @@ import { toast } from "sonner"
 import { ArticleHistorySheet } from "@/components/articles/article-history-sheet"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { BarcodeScanner } from "@/components/ui/barcode-scanner"
+import { Camera } from "lucide-react"
 
 interface DocumentLinesProps {
   control: Control<any>
@@ -85,6 +87,8 @@ export function DocumentLines({
 
   const [quickScanCode, setQuickScanCode] = React.useState("")
   const [isScanning, setIsScanning] = React.useState(false)
+  const [isScannerOpen, setIsScannerOpen] = React.useState(false)
+  const quickScanRef = React.useRef<HTMLInputElement>(null)
 
   const supabase = createClient()
   const lignes = watch(fieldName) || []
@@ -208,16 +212,21 @@ export function DocumentLines({
   }
 
   function addLine() {
-    append({
-      article_id: null,
-      designation: "",
-      quantite: 1,
-      prix_unitaire: 0,
-      tva: 20,
-      montant_ht: 0,
-      codes_articles: [],
-      ordre: fields.length,
-    })
+    if (quickScanRef.current) {
+        quickScanRef.current.focus()
+        toast.info("Escanee o escriba el código del producto")
+    } else {
+        append({
+            article_id: null,
+            designation: "",
+            quantite: 1,
+            prix_unitaire: 0,
+            tva: 20,
+            montant_ht: 0,
+            codes_articles: [],
+            ordre: fields.length,
+        })
+    }
   }
 
   const filterFn = (value: string, search: string) => {
@@ -228,17 +237,30 @@ export function DocumentLines({
     <div className="space-y-4">
       {/* Search & Actions Bar */}
       <div className="flex flex-col sm:flex-row items-center gap-4 bg-muted/30 p-4 rounded-xl border-2 border-dashed border-muted-foreground/10">
-        <div className="relative flex-1 group">
-            <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground group-focus-within:text-orange-600 transition-colors" />
-            <Input 
-                placeholder="Escaneo Rápido (Código, IMEI, SN...)" 
-                className="pl-10 h-11 bg-background border-none shadow-inner ring-offset-background focus-visible:ring-2 focus-visible:ring-orange-500"
-                value={quickScanCode}
-                onChange={(e) => setQuickScanCode(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleQuickScan(quickScanCode))}
-                disabled={isScanning}
-            />
-            {isScanning && <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-orange-600" />}
+        <div className="relative flex-1 group flex items-center gap-2">
+            <div className="relative flex-1">
+                <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground group-focus-within:text-orange-600 transition-colors" />
+                <Input 
+                    ref={quickScanRef}
+                    placeholder="Escaneo Rápido (Código, IMEI, SN...)" 
+                    className="pl-10 h-11 bg-background border-none shadow-inner ring-offset-background focus-visible:ring-2 focus-visible:ring-orange-500 font-bold"
+                    value={quickScanCode}
+                    onChange={(e) => setQuickScanCode(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleQuickScan(quickScanCode))}
+                    disabled={isScanning}
+                />
+                {isScanning && <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-orange-600" />}
+            </div>
+            
+            <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-11 w-11 shrink-0 rounded-xl border-2 border-orange-500/20 text-orange-600 hover:bg-orange-500 hover:text-white transition-all shadow-sm"
+                onClick={() => setIsScannerOpen(true)}
+            >
+                <Camera className="h-5 w-5" />
+            </Button>
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
@@ -268,7 +290,7 @@ export function DocumentLines({
         <Table>
           <TableHeader className="bg-muted/80 h-12">
             <TableRow>
-              <TableHead className="w-[200px] text-[11px] font-black uppercase tracking-widest px-6">Article</TableHead>
+              <TableHead className="w-[250px] text-[11px] font-black uppercase tracking-widest px-6">Référence / Code</TableHead>
               <TableHead className="text-[11px] font-black uppercase tracking-widest">Désignation & Traçabilidad</TableHead>
               <TableHead className="w-[100px] text-center text-[11px] font-black uppercase tracking-widest">Qté</TableHead>
               <TableHead className="w-[140px] text-[11px] font-black uppercase tracking-widest">Prix unit.</TableHead>
@@ -291,66 +313,94 @@ export function DocumentLines({
                 <TableRow key={field.id} className="group hover:bg-muted/30 transition-all border-b border-muted/50">
                   <TableCell className="align-top py-5 px-6">
                     <div className="flex flex-col gap-2">
-                        <Popover>
-                        <PopoverTrigger asChild>
+                        <div className="flex items-center gap-1">
+                            <div className="relative flex-1">
+                                <Input 
+                                    placeholder="Code / Barcode"
+                                    className="h-10 font-mono text-xs border-2 focus-visible:ring-orange-500 pr-8"
+                                    defaultValue={article?.code || ""}
+                                    onKeyDown={async (e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault()
+                                            const code = (e.target as HTMLInputElement).value
+                                            if (code) {
+                                                const { data } = await supabase.rpc("find_article_by_code", { p_search_code: code } as any)
+                                                const result = (Array.isArray(data) ? data[0] : data) as any
+                                                if (result) {
+                                                    handleArticleSelect(index, result.article_id)
+                                                    toast.success(`Produit trouvé: ${result.designation}`)
+                                                } else {
+                                                    toast.error("Code non trouvé")
+                                                }
+                                            }
+                                        }
+                                    }}
+                                />
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="absolute right-0 top-0 h-10 w-8 text-muted-foreground hover:text-orange-600"
+                                        >
+                                            <Search className="h-4 w-4" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[380px] p-0" align="start">
+                                        <Command filter={filterFn}>
+                                        <CommandInput placeholder="Nom, code, code barre..." />
+                                        <CommandList>
+                                            <CommandEmpty>
+                                                <div className="p-4 text-center">
+                                                    <PackageSearch className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                                                    <p className="text-sm text-muted-foreground">Aucun article trouvé.</p>
+                                                </div>
+                                            </CommandEmpty>
+                                            <CommandGroup className="p-1">
+                                            {filteredArticles.map((art) => {
+                                                const searchStr = `${art.code} ${art.reference || ''} ${art.code_barre || ''} ${art.designation}`
+                                                const artStock = (art as any).stock_actuel || 0
+                                                return (
+                                                <CommandItem
+                                                    key={art.id}
+                                                    value={searchStr}
+                                                    onSelect={() => handleArticleSelect(index, art.id)}
+                                                    className="rounded-md p-2"
+                                                >
+                                                    <Check className={cn("mr-2 h-4 w-4 text-orange-600", ligne.article_id === art.id ? "opacity-100" : "opacity-0")} />
+                                                    <div className="flex-1 flex flex-col gap-1">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="font-bold text-sm">{art.designation}</span>
+                                                            <Badge className={cn("text-[9px] h-4 px-1.5", artStock > 0 ? "bg-green-500/10 text-green-600 border-none" : "bg-destructive/10 text-destructive border-none")}>
+                                                                Stock: {artStock}
+                                                            </Badge>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground uppercase font-black tracking-widest">{art.reference || art.code}</span>
+                                                        </div>
+                                                    </div>
+                                                </CommandItem>
+                                                )
+                                            })}
+                                            </CommandGroup>
+                                        </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
                             <Button
-                            variant="outline"
-                            role="combobox"
-                            className={cn(
-                                "w-full justify-between h-10 px-3 font-bold text-xs border-2 shadow-sm transition-all",
-                                isLowStock ? "border-destructive/30 bg-destructive/5" : "hover:border-orange-500 hover:bg-orange-50/50"
-                            )}
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-10 w-10 shrink-0 border-2 border-orange-500/20 text-orange-600 hover:bg-orange-500 hover:text-white transition-all hidden md:flex"
+                                onClick={() => {
+                                    setActiveTraceability(index) // Use same modal but with scan-and-resolve logic
+                                    setIsScannerOpen(true)
+                                }}
                             >
-                            {ligne.article_id
-                                ? article?.designation || "Inconnu"
-                                : "Choisir..."}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                <Camera className="h-4 w-4" />
                             </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[380px] p-0" align="start">
-                            <Command filter={filterFn}>
-                            <CommandInput placeholder="Nom, code, code barre..." />
-                            <CommandList>
-                                <CommandEmpty>
-                                    <div className="p-4 text-center">
-                                        <PackageSearch className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                                        <p className="text-sm text-muted-foreground">Aucun article trouvé.</p>
-                                    </div>
-                                </CommandEmpty>
-                                <CommandGroup className="p-1">
-                                {filteredArticles.map((art) => {
-                                    const searchStr = `${art.code} ${art.reference || ''} ${art.code_barre || ''} ${art.designation}`
-                                    const artStock = (art as any).stock_actuel || 0
-                                    return (
-                                    <CommandItem
-                                        key={art.id}
-                                        value={searchStr}
-                                        onSelect={() => handleArticleSelect(index, art.id)}
-                                        className="rounded-md p-2"
-                                    >
-                                        <Check className={cn("mr-2 h-4 w-4 text-orange-600", ligne.article_id === art.id ? "opacity-100" : "opacity-0")} />
-                                        <div className="flex-1 flex flex-col gap-1">
-                                            <div className="flex items-center justify-between">
-                                                <span className="font-bold text-sm">{art.designation}</span>
-                                                <Badge className={cn("text-[9px] h-4 px-1.5", artStock > 0 ? "bg-green-500/10 text-green-600 border-none" : "bg-destructive/10 text-destructive border-none")}>
-                                                    Stock: {artStock}
-                                                </Badge>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground uppercase font-black tracking-widest">{art.reference || art.code}</span>
-                                                {art.sous_famille?.type_code_requis && (
-                                                <Badge variant="outline" className="text-[9px] py-0 h-4 border-orange-500/30 text-orange-600 bg-orange-50">{art.sous_famille.type_code_requis} requis</Badge>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </CommandItem>
-                                    )
-                                })}
-                                </CommandGroup>
-                            </CommandList>
-                            </Command>
-                        </PopoverContent>
-                        </Popover>
+                        </div>
                         
                         {ligne.article_id && (
                             <div className="flex items-center gap-2 px-1">
@@ -528,6 +578,14 @@ export function DocumentLines({
           isOpen={isHistoryOpen}
           onOpenChange={setIsHistoryOpen}
       />
+
+      {isScannerOpen && (
+        <BarcodeScanner 
+            onScan={(code) => handleQuickScan(code)}
+            onClose={() => setIsScannerOpen(false)}
+            title="Escaneo de Producto"
+        />
+      )}
     </div>
   )
 }

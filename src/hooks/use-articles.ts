@@ -148,3 +148,20 @@ export function useDeleteArticle() {
         },
     })
 }
+
+export function useArticlePurchaseHistory(id: string) {
+    const supabase = createClient()
+
+    return useQuery({
+        queryKey: ["articles", id, "purchase-history"],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from("v_historial_compras_articulos")
+                .select("*")
+                .eq("article_id", id)
+            if (error) throw error
+            return data
+        },
+        enabled: !!id,
+    })
+}
