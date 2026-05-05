@@ -213,21 +213,23 @@ export function DocumentLines({
   }
 
   function addLine() {
-    if (quickScanRef.current) {
-        quickScanRef.current.focus()
-        toast.info("Escanee o escriba el código del producto")
-    } else {
-        append({
-            article_id: null,
-            designation: "",
-            quantite: 1,
-            prix_unitaire: 0,
-            tva: 20,
-            montant_ht: 0,
-            codes_articles: [],
-            ordre: fields.length,
-        })
-    }
+    append({
+        article_id: null,
+        designation: "",
+        quantite: 1,
+        prix_unitaire: 0,
+        tva: 20,
+        montant_ht: 0,
+        codes_articles: [],
+        ordre: fields.length,
+    })
+    
+    // Focus the code input of the new line after a short delay
+    setTimeout(() => {
+        const inputs = document.querySelectorAll('input[placeholder="Code / Barcode"]')
+        const lastInput = inputs[inputs.length - 1] as HTMLInputElement
+        if (lastInput) lastInput.focus()
+    }, 100)
   }
 
   const filterFn = (value: string, search: string) => {

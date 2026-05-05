@@ -22,11 +22,12 @@ import {
 } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
-import { Loader2 } from "lucide-react"
+import { Loader2, Scan } from "lucide-react"
 import { useFamilles } from "@/hooks/use-familles"
 import { useSousFamillesByFamille } from "@/hooks/use-sous-familles"
 import type { Article } from "@/types/database"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
+import { BarcodeScanner } from "@/components/ui/barcode-scanner"
 
 interface ArticleFormProps {
     defaultValues?: Article
@@ -36,6 +37,7 @@ interface ArticleFormProps {
 
 export function ArticleForm({ defaultValues, onSubmit, isLoading }: ArticleFormProps) {
     const { data: familles } = useFamilles()
+    const [isScanning, setIsScanning] = useState(false)
 
     const form = useForm<ArticleFormData>({
         resolver: zodResolver(articleSchema) as any,
@@ -95,7 +97,18 @@ export function ArticleForm({ defaultValues, onSubmit, isLoading }: ArticleFormP
                                 <FormItem>
                                     <FormLabel>Code Barre</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="123456789..." {...field} value={field.value || ""} />
+                                        <div className="flex gap-2">
+                                            <Input placeholder="123456789..." {...field} value={field.value || ""} />
+                                            <Button 
+                                                type="button" 
+                                                size="icon" 
+                                                variant="outline" 
+                                                onClick={() => setIsScanning(true)}
+                                                className="shrink-0"
+                                            >
+                                                <Scan className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -296,6 +309,17 @@ export function ArticleForm({ defaultValues, onSubmit, isLoading }: ArticleFormP
                     </Button>
                 </div>
             </form>
+
+            {isScanning && (
+                <BarcodeScanner
+                    onScan={(code) => {
+                        form.setValue("code_barre", code)
+                        setIsScanning(false)
+                    }}
+                    onClose={() => setIsScanning(false)}
+                    title="Scanner le code barre"
+                />
+            )}
         </Form>
     )
 }
