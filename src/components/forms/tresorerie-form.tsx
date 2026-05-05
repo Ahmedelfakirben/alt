@@ -49,19 +49,21 @@ export function TresorerieForm({ defaultValues, onSubmit, isLoading }: Tresoreri
                         <CardTitle>Informations de la trésorerie</CardTitle>
                     </CardHeader>
                     <CardContent className="grid gap-4 md:grid-cols-2">
-                        <FormField
-                            control={form.control}
-                            name="code"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Code *</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="TRS-001" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        {defaultValues && (
+                            <FormField
+                                control={form.control}
+                                name="code"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Code *</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} value={field.value || ""} readOnly className="bg-muted" />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )}
                         <FormField
                             control={form.control}
                             name="libelle"

@@ -48,19 +48,21 @@ export function SalarieForm({ defaultValues, onSubmit, isLoading }: SalarieFormP
                         <CardTitle>Informations personnelles</CardTitle>
                     </CardHeader>
                     <CardContent className="grid gap-4 md:grid-cols-2">
-                        <FormField
-                            control={form.control}
-                            name="matricule"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Matricule *</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="SAL-001" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        {defaultValues && (
+                            <FormField
+                                control={form.control}
+                                name="matricule"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Matricule *</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} value={field.value || ""} readOnly className="bg-muted" />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )}
                         <FormField
                             control={form.control}
                             name="nom"

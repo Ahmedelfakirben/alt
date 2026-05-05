@@ -45,9 +45,16 @@ export function useCreateSalarie() {
 
     return useMutation({
         mutationFn: async (data: SalarieFormData) => {
+            // Robust code generation like BL/BA
+            let matricule = data.matricule
+            if (!matricule || matricule === "") {
+                const { data: nextCode } = await (supabase.rpc as any)("next_numero", { p_type: "salarie" })
+                matricule = nextCode
+            }
+
             const { data: result, error } = await supabase
                 .from("salaries")
-                .insert(data as any)
+                .insert({ ...data, matricule } as any)
                 .select()
                 .single()
             if (error) throw error

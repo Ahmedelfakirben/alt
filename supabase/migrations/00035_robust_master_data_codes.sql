@@ -5,7 +5,9 @@ VALUES
   ('fournisseur', 'FRN', (SELECT COALESCE(MAX(CAST(substring(code from '\d+') AS INTEGER)), 0) FROM fournisseurs)),
   ('article', 'ART', (SELECT COALESCE(MAX(CAST(substring(code from '\d+') AS INTEGER)), 0) FROM articles)),
   ('famille_article', 'FAM', (SELECT COALESCE(MAX(CAST(substring(code from '\d+') AS INTEGER)), 0) FROM familles_articles)),
-  ('depot', 'DEP', (SELECT COALESCE(MAX(CAST(substring(code from '\d+') AS INTEGER)), 0) FROM depots))
+  ('depot', 'DEP', (SELECT COALESCE(MAX(CAST(substring(code from '\d+') AS INTEGER)), 0) FROM depots)),
+  ('salarie', 'SAL', (SELECT COALESCE(MAX(CAST(substring(matricule from '\d+') AS INTEGER)), 0) FROM salaries)),
+  ('tresorerie', 'TRS', (SELECT COALESCE(MAX(CAST(substring(code from '\d+') AS INTEGER)), 0) FROM tresoreries))
 ON CONFLICT (type) DO UPDATE SET prefixe = EXCLUDED.prefixe;
 
 -- 2. Update next_numero to handle master data format (CLI00001) vs documents (BL-YYYY-0001)
@@ -25,7 +27,7 @@ BEGIN
   END IF;
 
   -- Master data format: PREFIX00001 (sin año)
-  IF p_type IN ('client', 'fournisseur', 'article', 'famille_article', 'depot') THEN
+  IF p_type IN ('client', 'fournisseur', 'article', 'famille_article', 'depot', 'salarie', 'tresorerie') THEN
     v_numero := v_seq.prefixe || LPAD(v_seq.dernier_numero::TEXT, 5, '0');
   ELSE
     -- Documents format: PREFIX-YYYY-0001 (con año)
@@ -40,6 +42,13 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION generate_missing_code()
 RETURNS TRIGGER AS $$
 BEGIN
+  IF TG_TABLE_NAME = 'salaries' THEN
+    IF NEW.matricule IS NULL OR NEW.matricule = '' THEN
+      NEW.matricule := next_numero('salarie');
+    END IF;
+    RETURN NEW;
+  END IF;
+
   IF NEW.code IS NOT NULL AND NEW.code <> '' THEN
     RETURN NEW;
   END IF;
@@ -50,6 +59,7 @@ BEGIN
   ELSIF TG_TABLE_NAME = 'articles' THEN NEW.code := next_numero('article');
   ELSIF TG_TABLE_NAME = 'familles_articles' THEN NEW.code := next_numero('famille_article');
   ELSIF TG_TABLE_NAME = 'depots' THEN NEW.code := next_numero('depot');
+  ELSIF TG_TABLE_NAME = 'tresoreries' THEN NEW.code := next_numero('tresorerie');
   END IF;
 
   RETURN NEW;
