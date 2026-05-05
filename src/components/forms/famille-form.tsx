@@ -50,7 +50,7 @@ export function FamilleForm({ defaultValues, onSubmit, isLoading }: FamilleFormP
                                     <FormItem>
                                         <FormLabel>Code *</FormLabel>
                                         <FormControl>
-                                            <Input {...field} readOnly className="bg-muted" />
+                                            <Input {...field} value={field.value || ""} readOnly className="bg-muted" />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>

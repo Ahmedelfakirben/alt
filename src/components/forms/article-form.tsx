@@ -81,7 +81,7 @@ export function ArticleForm({ defaultValues, onSubmit, isLoading }: ArticleFormP
                                     <FormItem>
                                         <FormLabel>Référence *</FormLabel>
                                         <FormControl>
-                                            <Input {...field} readOnly className="bg-muted" />
+                                            <Input {...field} value={field.value || ""} readOnly className="bg-muted" />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
