@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 export const clientSchema = z.object({
-  code: z.string().min(1, "Le code est obligatoire"),
+  code: z.string().optional().nullable(),
   raison_sociale: z.string().min(1, "La raison sociale est obligatoire"),
   adresse: z.string().optional().nullable(),
   ville: z.string().optional().nullable(),
@@ -13,7 +13,7 @@ export const clientSchema = z.object({
 export type ClientFormData = z.infer<typeof clientSchema>
 
 export const fournisseurSchema = z.object({
-  code: z.string().min(1, "Le code est obligatoire"),
+  code: z.string().optional().nullable(),
   raison_sociale: z.string().min(1, "La raison sociale est obligatoire"),
   adresse: z.string().optional().nullable(),
   ville: z.string().optional().nullable(),
@@ -25,7 +25,7 @@ export const fournisseurSchema = z.object({
 export type FournisseurFormData = z.infer<typeof fournisseurSchema>
 
 export const familleArticleSchema = z.object({
-  code: z.string().min(1, "Le code est obligatoire"),
+  code: z.string().optional().nullable(),
   libelle: z.string().min(1, "Le libellé est obligatoire"),
   description: z.string().optional().nullable(),
 })
@@ -42,7 +42,7 @@ export const sousFamilleArticleSchema = z.object({
 export type SousFamilleArticleFormData = z.infer<typeof sousFamilleArticleSchema>
 
 export const articleSchema = z.object({
-  code: z.string().min(1, "Le code est obligatoire"),
+  code: z.string().optional().nullable(),
   reference: z.string().optional().nullable(),
   code_barre: z.string().optional().nullable(),
   designation: z.string().min(1, "La désignation est obligatoire"),
@@ -62,7 +62,7 @@ export const articleSchema = z.object({
 export type ArticleFormData = z.infer<typeof articleSchema>
 
 export const depotSchema = z.object({
-  code: z.string().min(1, "Le code est obligatoire"),
+  code: z.string().optional().nullable(),
   libelle: z.string().min(1, "Le libellé est obligatoire"),
   adresse: z.string().optional().nullable(),
   responsable_id: z.string().optional().nullable(),
@@ -71,7 +71,7 @@ export const depotSchema = z.object({
 export type DepotFormData = z.infer<typeof depotSchema>
 
 export const salarieSchema = z.object({
-  matricule: z.string().min(1, "Le matricule est obligatoire"),
+  matricule: z.string().optional().nullable(),
   nom: z.string().min(1, "Le nom est obligatoire"),
   prenom: z.string().min(1, "Le prénom est obligatoire"),
   poste: z.string().optional().nullable(),
@@ -85,7 +85,7 @@ export const salarieSchema = z.object({
 export type SalarieFormData = z.infer<typeof salarieSchema>
 
 export const tresorerieSchema = z.object({
-  code: z.string().min(1, "Le code est obligatoire"),
+  code: z.string().optional().nullable(),
   libelle: z.string().min(1, "Le libellé est obligatoire"),
   type: z.enum(["caisse", "banque"]),
   solde: z.coerce.number().default(0),

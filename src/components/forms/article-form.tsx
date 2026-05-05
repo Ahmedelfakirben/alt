@@ -26,7 +26,6 @@ import { Loader2 } from "lucide-react"
 import { useFamilles } from "@/hooks/use-familles"
 import { useSousFamillesByFamille } from "@/hooks/use-sous-familles"
 import type { Article } from "@/types/database"
-import { useNextCode } from "@/hooks/use-next-code"
 import { useEffect } from "react"
 
 interface ArticleFormProps {
@@ -59,14 +58,6 @@ export function ArticleForm({ defaultValues, onSubmit, isLoading }: ArticleFormP
     const selectedFamilleId = form.watch("famille_id")
     const { data: sousFamilles } = useSousFamillesByFamille(selectedFamilleId || "")
 
-    const { data: nextCode, isLoading: isCodeLoading } = useNextCode("articles", "ART")
-
-    useEffect(() => {
-        if (!defaultValues && nextCode) {
-            form.setValue("code", nextCode)
-        }
-    }, [nextCode, defaultValues, form])
-
     // Reset sous_famille if famille changes
     useEffect(() => {
         if (selectedFamilleId !== defaultValues?.famille_id) {
@@ -82,19 +73,21 @@ export function ArticleForm({ defaultValues, onSubmit, isLoading }: ArticleFormP
                         <CardTitle>Informations générales</CardTitle>
                     </CardHeader>
                     <CardContent className="grid gap-4 md:grid-cols-2">
-                        <FormField
-                            control={form.control}
-                            name="code"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Référence *</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Génération auto..." {...field} readOnly className="bg-muted" />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        {defaultValues && (
+                            <FormField
+                                control={form.control}
+                                name="code"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Référence *</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} readOnly className="bg-muted" />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )}
                         <FormField
                             control={form.control}
                             name="code_barre"

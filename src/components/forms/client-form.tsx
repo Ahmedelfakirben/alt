@@ -17,8 +17,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 import type { Client } from "@/types/database"
-import { useNextCode } from "@/hooks/use-next-code"
-import { useEffect } from "react"
 
 interface ClientFormProps {
   defaultValues?: Client
@@ -40,14 +38,6 @@ export function ClientForm({ defaultValues, onSubmit, isLoading }: ClientFormPro
     },
   })
 
-  const { data: nextCode, isLoading: isCodeLoading } = useNextCode("clients", "CLI")
-
-  useEffect(() => {
-    if (!defaultValues && nextCode) {
-      form.setValue("code", nextCode)
-    }
-  }, [nextCode, defaultValues, form])
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -56,19 +46,21 @@ export function ClientForm({ defaultValues, onSubmit, isLoading }: ClientFormPro
             <CardTitle>Informations générales</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="code"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Code *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Génération auto..." {...field} readOnly className="bg-muted" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {defaultValues && (
+              <FormField
+                control={form.control}
+                name="code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Code *</FormLabel>
+                    <FormControl>
+                      <Input {...field} readOnly className="bg-muted" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <FormField
               control={form.control}
               name="raison_sociale"

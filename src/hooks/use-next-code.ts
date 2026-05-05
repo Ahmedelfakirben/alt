@@ -9,41 +9,25 @@ export function useNextCode(table: "clients" | "fournisseurs" | "familles_articl
   return useQuery({
     queryKey: ["next-code", table],
     queryFn: async () => {
-      // Pour une garantie absolue contre la concurrence, la BD reste le meilleur endroit,
-      // mais ceci est une approche frontend très courante.
-      const { data, error } = await supabase
-        .from(table)
-        .select("code")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle() // Empêche l'erreur 406 Not Acceptable si la table est vide
+      // Map frontend table names to backend sequence types
+      let type = ""
+      if (table === "clients") type = "client"
+      else if (table === "fournisseurs") type = "fournisseur"
+      else if (table === "articles") type = "article"
+      else if (table === "familles_articles") type = "famille_article"
+      else if (table === "depots") type = "depot"
 
-      if (error) {
-        console.error("Error fetching next code:", error)
-        // Fallback temp
-        return `${prefix}001`
-      }
-
-      if (!data) {
-        return `${prefix}001`
-      }
-
-      const row = data as any
-
-      // Par exemple data.code = 'CLI001' ou 'CLI-001'
-      // Extraire tous les nombres de la chaîne
-      const match = row.code.match(/\d+/)
+      const { data, error } = await (supabase.rpc as any)("next_numero", { p_type: type })
       
-      if (match) {
-        const lastNumber = parseInt(match[0], 10)
-        const nextNumber = lastNumber + 1
-        // Formate à 3 chiffres (001, 002... 010...)
-        const paddedNumber = String(nextNumber).padStart(3, '0')
-        return `${prefix}${paddedNumber}`
+      if (error) {
+        console.error("Error fetching next code via RPC:", error)
+        return `${prefix}001`
       }
 
-      // Fallback si pas de nombre trouvé
-      return `${prefix}001`
+      return data as string
     },
+    // We don't want to refetch and increment the sequence unnecessarily
+    staleTime: Infinity,
+    gcTime: 0,
   })
 }

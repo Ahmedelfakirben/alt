@@ -45,9 +45,16 @@ export function useCreateFournisseur() {
 
   return useMutation({
     mutationFn: async (data: FournisseurFormData) => {
+      // Robust code generation like BL/BA
+      let code = data.code
+      if (!code || code === "" || code === "Génération auto...") {
+        const { data: nextCode } = await (supabase.rpc as any)("next_numero", { p_type: "fournisseur" })
+        code = nextCode
+      }
+
       const { data: result, error } = await supabase
         .from("fournisseurs")
-        .insert(data as any)
+        .insert({ ...data, code } as any)
         .select()
         .single()
       if (error) throw error

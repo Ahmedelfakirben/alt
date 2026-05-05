@@ -45,8 +45,15 @@ export function useCreateClient() {
 
   return useMutation({
     mutationFn: async (data: ClientFormData) => {
+      // Robust code generation like BL/BA
+      let code = data.code
+      if (!code || code === "" || code === "Génération auto...") {
+        const { data: nextCode } = await (supabase.rpc as any)("next_numero", { p_type: "client" })
+        code = nextCode
+      }
+
       const cleanData = Object.fromEntries(
-        Object.entries(data).map(([k, v]) => [k, v === "" ? null : v])
+        Object.entries({ ...data, code }).map(([k, v]) => [k, v === "" ? null : v])
       )
       const { data: result, error } = await supabase
         .from("clients")

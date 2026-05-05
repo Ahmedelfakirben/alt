@@ -57,10 +57,17 @@ export function useCreateArticle() {
             // Séparer les données de l'article et du stock
             const { stock_initial, depot_id, ...articleData } = formData
 
+            // Robust code generation like BL/BA
+            let code = articleData.code
+            if (!code || code === "" || code === "Génération auto...") {
+                const { data: nextCode } = await (supabase.rpc as any)("next_numero", { p_type: "article" })
+                code = nextCode
+            }
+
             // 1. Créer l'article
             const { data: article, error: articleError } = await supabase
                 .from("articles")
-                .insert(articleData as any)
+                .insert({ ...articleData, code } as any)
                 .select()
                 .single()
 
